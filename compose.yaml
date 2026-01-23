@@ -1,1 +1,23 @@
-services: { }
+services:
+  mysql:
+    image: 'mysql:9.5.0'
+    container_name: indonesia-map-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: '53cret'
+      MYSQL_DATABASE: 'wilayah_indo3'
+      MYSQL_USER: 'yu71'
+      MYSQL_PASSWORD: '53cret'
+    ports:
+      - '13306:3306'
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p53cret"]
+      timeout: 10s
+      retries: 10
+      interval: 5s
+      start_period: 30s
+
+volumes:
+  mysql_data:
+    driver: local
