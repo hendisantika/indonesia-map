@@ -200,50 +200,103 @@
 
             // Handle provinsi selection
             function handleProvinsiChange(kode) {
+                console.log('Province selected:', kode);
                 if (kode) {
-                    // Load detail and boundary
-                    loadDetail(kode);
+                    try {
+                        // Load detail and boundary
+                        loadDetail(kode);
 
-                    // Load kabupaten list via HTMX
-                    htmx.ajax('GET', `/wilayah/kabupaten-select/${kode}`, {
-                        target: '#kabupaten-container',
-                        swap: 'innerHTML'
-                    });
+                        // Load kabupaten list via HTMX
+                        if (typeof htmx !== 'undefined') {
+                            htmx.ajax('GET', `/wilayah/kabupaten-select/${kode}`, {
+                                target: '#kabupaten-container',
+                                swap: 'innerHTML'
+                            }).then(() => {
+                                console.log('Kabupaten list loaded successfully');
+                            }).catch(err => {
+                                console.error('Error loading kabupaten list:', err);
+                                // Fallback: load via fetch
+                                fetch(`/wilayah/kabupaten-select/${kode}`)
+                                    .then(response => response.text())
+                                    .then(html => {
+                                        document.getElementById('kabupaten-container').innerHTML = html;
+                                    });
+                            });
+                        } else {
+                            console.error('HTMX not loaded!');
+                        }
 
-                    // Reset lower levels
-                    resetKecamatanSelect();
-                    resetDesaSelect();
+                        // Reset lower levels
+                        resetKecamatanSelect();
+                        resetDesaSelect();
+                    } catch (error) {
+                        console.error('Error in handleProvinsiChange:', error);
+                    }
                 }
             }
 
             // Handle kabupaten selection
             function handleKabupatenChange(kode) {
+                console.log('Kabupaten selected:', kode);
                 if (kode) {
-                    // Load detail and boundary
-                    loadDetail(kode);
+                    try {
+                        // Load detail and boundary
+                        loadDetail(kode);
 
-                    // Load kecamatan list via HTMX
-                    htmx.ajax('GET', `/wilayah/kecamatan-select/${kode}`, {
-                        target: '#kecamatan-container',
-                        swap: 'innerHTML'
-                    });
+                        // Load kecamatan list via HTMX
+                        if (typeof htmx !== 'undefined') {
+                            htmx.ajax('GET', `/wilayah/kecamatan-select/${kode}`, {
+                                target: '#kecamatan-container',
+                                swap: 'innerHTML'
+                            }).then(() => {
+                                console.log('Kecamatan list loaded successfully');
+                            }).catch(err => {
+                                console.error('Error loading kecamatan list:', err);
+                                // Fallback: load via fetch
+                                fetch(`/wilayah/kecamatan-select/${kode}`)
+                                    .then(response => response.text())
+                                    .then(html => {
+                                        document.getElementById('kecamatan-container').innerHTML = html;
+                                    });
+                            });
+                        }
 
-                    // Reset lower level
-                    resetDesaSelect();
+                        // Reset lower level
+                        resetDesaSelect();
+                    } catch (error) {
+                        console.error('Error in handleKabupatenChange:', error);
+                    }
                 }
             }
 
             // Handle kecamatan selection
             function handleKecamatanChange(kode) {
+                console.log('Kecamatan selected:', kode);
                 if (kode) {
-                    // Load detail and boundary
-                    loadDetail(kode);
+                    try {
+                        // Load detail and boundary
+                        loadDetail(kode);
 
-                    // Load desa list via HTMX
-                    htmx.ajax('GET', `/wilayah/desa-select/${kode}`, {
-                        target: '#desa-container',
-                        swap: 'innerHTML'
-                    });
+                        // Load desa list via HTMX
+                        if (typeof htmx !== 'undefined') {
+                            htmx.ajax('GET', `/wilayah/desa-select/${kode}`, {
+                                target: '#desa-container',
+                                swap: 'innerHTML'
+                            }).then(() => {
+                                console.log('Desa list loaded successfully');
+                            }).catch(err => {
+                                console.error('Error loading desa list:', err);
+                                // Fallback: load via fetch
+                                fetch(`/wilayah/desa-select/${kode}`)
+                                    .then(response => response.text())
+                                    .then(html => {
+                                        document.getElementById('desa-container').innerHTML = html;
+                                    });
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Error in handleKecamatanChange:', error);
+                    }
                 }
             }
 
@@ -285,14 +338,29 @@
 
             // Load detail for selected wilayah
             function loadDetail(kode) {
+                console.log('Loading detail for:', kode);
                 if (kode) {
                     // Load detail panel
-                    htmx.ajax('GET', `/wilayah/detail/${kode}`, {target: '#detail-panel'});
+                    if (typeof htmx !== 'undefined') {
+                        htmx.ajax('GET', `/wilayah/detail/${kode}`, {target: '#detail-panel'});
+                    } else {
+                        fetch(`/wilayah/detail/${kode}`)
+                            .then(response => response.text())
+                            .then(html => {
+                                document.getElementById('detail-panel').innerHTML = html;
+                            });
+                    }
 
                     // Load boundaries and display on map using the new boundary endpoint
                     fetch(`/wilayah/api/boundary/${kode}`)
-                        .then(response => response.json())
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            return response.json();
+                        })
                         .then(data => {
+                            console.log('Boundary data received:', data);
                             // Clear previous layers
                             markersLayer.clearLayers();
                             boundaryLayer.clearLayers();
