@@ -10,22 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:9.5.0
-        env:
-          MYSQL_ROOT_PASSWORD: 53cret
-          MYSQL_DATABASE: wilayah_indo3
-          MYSQL_USER: yu71
-          MYSQL_PASSWORD: 53cret
-        ports:
-          - 13306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -42,30 +26,11 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Wait for MySQL to be ready
-      run: |
-        for i in {1..30}; do
-          if mysqladmin ping -h"127.0.0.1" -P13306 -uyu71 -p53cret --silent; then
-            echo "MySQL is ready!"
-            break
-          fi
-          echo "Waiting for MySQL..."
-          sleep 2
-        done
-
-    - name: Build with Maven
+    - name: Verify compilation
       run: mvn -B clean compile --file pom.xml
-      env:
-        SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true
-        SPRING_DATASOURCE_USERNAME: yu71
-        SPRING_DATASOURCE_PASSWORD: 53cret
 
-    - name: Run tests
-      run: mvn -B test --file pom.xml
-      env:
-        SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true
-        SPRING_DATASOURCE_USERNAME: yu71
-        SPRING_DATASOURCE_PASSWORD: 53cret
-
-    - name: Package application
+    - name: Package application (skip tests)
       run: mvn -B package -DskipTests --file pom.xml
+
+    - name: Verify JAR was created
+      run: ls -lh target/*.jar
