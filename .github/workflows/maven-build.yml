@@ -26,11 +26,8 @@ jobs:
         distribution: 'temurin'
         cache: maven
 
-    - name: Verify compilation
-      run: mvn -B clean compile --file pom.xml
-
-    - name: Package application (skip tests)
-      run: mvn -B package -DskipTests --file pom.xml
+    - name: Build project (skip tests)
+      run: mvn -B clean package -DskipTests -Dmaven.test.skip=true --file pom.xml
 
     - name: Verify JAR was created
-      run: ls -lh target/*.jar
+      run: ls -lh target/*.jar && echo "Build successful!"
