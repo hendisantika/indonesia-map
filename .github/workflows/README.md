@@ -79,6 +79,7 @@ This directory contains GitHub Actions workflows for CI/CD automation.
 
 Defined in workflows:
 
+### Docker & Deployment
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `DOCKER_USERNAME` | hendisantika | Docker Hub username |
@@ -86,6 +87,19 @@ Defined in workflows:
 | `DEPLOY_HOST` | 103.31.204.189 | Deployment server IP |
 | `DEPLOY_USER` | deployer | Deployment user |
 | `DEPLOY_PATH` | /home/deployer/maps | Deployment directory |
+
+### Database Configuration
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `DB_HOST` | localhost | Database host on dev server |
+| `DB_PORT` | 13306 | Database port |
+| `DB_NAME` | wilayah_indo3 | Database name |
+
+### Application Configuration
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `SERVER_PORT` | 8080 | Application port |
+| `SPRING_PROFILE` | dev | Spring profile for deployment |
 
 ---
 

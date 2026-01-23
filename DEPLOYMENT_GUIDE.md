@@ -178,15 +178,31 @@ gh run watch
 
 ## Deployment Configuration
 
+### Spring Profiles
+
+The application uses Spring profiles to manage different environments:
+
+- **default** - Local development (uses application.properties with hardcoded values)
+- **dev** - Development server deployment (uses application-dev.properties with environment variables)
+
 ### Environment Variables (on Server)
 
 The container is started with these environment variables:
 
 ```bash
-SPRING_DATASOURCE_URL=jdbc:mysql://localhost:13306/wilayah_indo3?...
-SPRING_DATASOURCE_USERNAME=[from secret]
-SPRING_DATASOURCE_PASSWORD=[from secret]
+# Spring Profile
+SPRING_PROFILES_ACTIVE=dev
+
+# Database Configuration
+DB_URL=jdbc:mysql://localhost:13306/wilayah_indo3?...
+DB_USERNAME=[from GitHub secret]
+DB_PASSWORD=[from GitHub secret]
+
+# Server Configuration
+SERVER_PORT=8080
 ```
+
+These variables are injected from GitHub Actions secrets and environment variables during deployment.
 
 ### Network Configuration
 
@@ -215,14 +231,16 @@ docker pull hendisantika/indonesia-map:latest
 docker stop indonesia-map
 docker rm indonesia-map
 
-# Start new container
+# Start new container with dev profile
 docker run -d \
   --name indonesia-map \
   --restart unless-stopped \
   -p 8080:8080 \
-  -e SPRING_DATASOURCE_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
-  -e SPRING_DATASOURCE_USERNAME="yu71" \
-  -e SPRING_DATASOURCE_PASSWORD="53cret" \
+  -e SPRING_PROFILES_ACTIVE="dev" \
+  -e DB_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
+  -e DB_USERNAME="yu71" \
+  -e DB_PASSWORD="53cret" \
+  -e SERVER_PORT="8080" \
   --network host \
   hendisantika/indonesia-map:latest
 
@@ -389,9 +407,11 @@ docker run -d \
   --name indonesia-map \
   --restart unless-stopped \
   -p 8080:8080 \
-  -e SPRING_DATASOURCE_URL="jdbc:mysql://localhost:13306/wilayah_indo3?..." \
-  -e SPRING_DATASOURCE_USERNAME="yu71" \
-  -e SPRING_DATASOURCE_PASSWORD="53cret" \
+  -e SPRING_PROFILES_ACTIVE="dev" \
+  -e DB_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
+  -e DB_USERNAME="yu71" \
+  -e DB_PASSWORD="53cret" \
+  -e SERVER_PORT="8080" \
   --network host \
   hendisantika/indonesia-map:[previous-tag]
 ```

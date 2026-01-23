@@ -10,6 +10,13 @@ env:
   DEPLOY_HOST: 103.31.204.189
   DEPLOY_USER: deployer
   DEPLOY_PATH: /home/deployer/maps
+  # Database Configuration
+  DB_HOST: localhost
+  DB_PORT: 13306
+  DB_NAME: wilayah_indo3
+  # Application Configuration
+  SERVER_PORT: 8080
+  SPRING_PROFILE: dev
 
 jobs:
   build-and-deploy:
@@ -59,7 +66,7 @@ jobs:
       with:
         images: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}
         tags: |
-          type=raw,value=latest
+          type=raw,value=${{ github.run_number }}
           type=sha,prefix={{branch}}-
           type=ref,event=branch
           type=semver,pattern={{version}},value=${{ steps.version.outputs.version }}
@@ -93,16 +100,18 @@ jobs:
           docker stop indonesia-map || true
           docker rm indonesia-map || true
 
-          # Run new container
+          # Run new container with dev profile
           docker run -d \
             --name indonesia-map \
             --restart unless-stopped \
-            -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
-            -e SPRING_DATASOURCE_USERNAME="${{ secrets.DB_USERNAME }}" \
-            -e SPRING_DATASOURCE_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            -p ${{ env.SERVER_PORT }}:${{ env.SERVER_PORT }} \
+            -e SPRING_PROFILES_ACTIVE="${{ env.SPRING_PROFILE }}" \
+            -e DB_URL="jdbc:mysql://${{ env.DB_HOST }}:${{ env.DB_PORT }}/${{ env.DB_NAME }}?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
+            -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
+            -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+            -e SERVER_PORT="${{ env.SERVER_PORT }}" \
             --network host \
-            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+            ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}
 
           # Clean up unused images
           docker image prune -f

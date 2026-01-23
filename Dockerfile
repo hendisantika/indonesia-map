@@ -33,12 +33,22 @@ RUN chown -R appuser:appuser /app
 
 USER appuser
 
+# Environment variables (can be overridden at runtime)
+ENV SPRING_PROFILES_ACTIVE=dev \
+    SERVER_PORT=8080 \
+    DB_URL="" \
+    DB_USERNAME="" \
+    DB_PASSWORD=""
+
 # Expose port
-EXPOSE 8080
+EXPOSE ${SERVER_PORT}
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+    CMD wget --no-verbose --tries=1 --spider http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
-# Run application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run application with JVM options
+ENTRYPOINT ["java", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-Dserver.port=${SERVER_PORT}", \
+    "-jar", "app.jar"]
