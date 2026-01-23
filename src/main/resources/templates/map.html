@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout}">
+<head>
+    <title>Interactive Map - Indonesia Map</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid mt-4 mb-5">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h4 class="mb-0">Interactive Map of Indonesia</h4>
+                            <p class="mb-0 small">Click on regions to view boundaries and details</p>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="map"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Map Controls -->
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5>Map Controls</h5>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-outline-primary" onclick="resetMap()">Reset View</button>
+                                <button class="btn btn-outline-success" onclick="loadAllBoundaries()">Load All Boundaries</button>
+                                <button class="btn btn-outline-info" onclick="showProvinces()">Show Provinces</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="extra-js">
+        <!-- Leaflet JS -->
+        <script th:src="@{/webjars/leaflet/1.9.4/dist/leaflet.js}"></script>
+
+        <script>
+            // Initialize map centered on Indonesia
+            const map = L.map('map').setView([-2.5489, 118.0149], 5);
+
+            // Add OpenStreetMap tile layer
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            // Layer group for boundaries
+            const boundariesLayer = L.layerGroup().addTo(map);
+
+            // Function to reset map view
+            function resetMap() {
+                map.setView([-2.5489, 118.0149], 5);
+                boundariesLayer.clearLayers();
+            }
+
+            // Function to load all boundaries (provinces)
+            function loadAllBoundaries() {
+                fetch('/wilayah/api/all')
+                    .then(response => response.json())
+                    .then(data => {
+                        boundariesLayer.clearLayers();
+
+                        data.forEach(wilayah => {
+                            if (wilayah.path && wilayah.lat && wilayah.lng) {
+                                // Add marker
+                                const marker = L.marker([wilayah.lat, wilayah.lng])
+                                    .bindPopup(`
+                                        <strong>${wilayah.nama}</strong><br>
+                                        Kode: ${wilayah.kode}<br>
+                                        Level: ${wilayah.level}<br>
+                                        ${wilayah.ibukota ? 'Ibukota: ' + wilayah.ibukota : ''}
+                                    `)
+                                    .addTo(boundariesLayer);
+
+                                // If path data exists, try to parse and draw polygon
+                                try {
+                                    const coordinates = JSON.parse(wilayah.path);
+                                    if (Array.isArray(coordinates) && coordinates.length > 0) {
+                                        L.polygon(coordinates, {
+                                            color: '#dc3545',
+                                            weight: 2,
+                                            fillOpacity: 0.2
+                                        }).bindPopup(`<strong>${wilayah.nama}</strong>`)
+                                          .addTo(boundariesLayer);
+                                    }
+                                } catch (e) {
+                                    console.warn('Could not parse path for', wilayah.nama);
+                                }
+                            }
+                        });
+
+                        // Fit map to boundaries
+                        if (boundariesLayer.getLayers().length > 0) {
+                            map.fitBounds(boundariesLayer.getBounds());
+                        }
+                    })
+                    .catch(error => console.error('Error loading boundaries:', error));
+            }
+
+            // Function to show only provinces
+            function showProvinces() {
+                fetch('/wilayah/api/all')
+                    .then(response => response.json())
+                    .then(data => {
+                        boundariesLayer.clearLayers();
+
+                        // Filter only provinces (length = 2)
+                        const provinces = data.filter(w => w.kode.length === 2);
+
+                        provinces.forEach(provinsi => {
+                            if (provinsi.lat && provinsi.lng) {
+                                const marker = L.marker([provinsi.lat, provinsi.lng])
+                                    .bindPopup(`
+                                        <div class="p-2">
+                                            <h6 class="mb-1">${provinsi.nama}</h6>
+                                            <small>Kode: ${provinsi.kode}</small><br>
+                                            ${provinsi.ibukota ? '<small>Ibukota: ' + provinsi.ibukota + '</small>' : ''}
+                                            ${provinsi.penduduk ? '<br><small>Penduduk: ' + provinsi.penduduk.toLocaleString() + '</small>' : ''}
+                                            ${provinsi.luas ? '<br><small>Luas: ' + provinsi.luas.toLocaleString() + ' km²</small>' : ''}
+                                        </div>
+                                    `)
+                                    .addTo(boundariesLayer);
+                            }
+                        });
+
+                        if (provinces.length > 0) {
+                            map.setView([-2.5489, 118.0149], 5);
+                        }
+                    })
+                    .catch(error => console.error('Error loading provinces:', error));
+            }
+
+            // Load provinces on page load
+            showProvinces();
+
+            // Add scale control
+            L.control.scale().addTo(map);
+        </script>
+    </th:block>
+</body>
+</html>

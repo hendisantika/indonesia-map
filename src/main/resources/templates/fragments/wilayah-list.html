@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <div th:fragment="wilayah-list">
+        <div th:if="${wilayahList != null and !wilayahList.isEmpty()}" class="list-group">
+            <div th:each="wilayah : ${wilayahList}"
+                 class="list-group-item list-group-item-action"
+                 th:attr="hx-get=${#strings.length(wilayah.kode) == 2 ? '/wilayah/kabupaten/' + wilayah.kode :
+                                    #strings.length(wilayah.kode) == 5 ? '/wilayah/kecamatan/' + wilayah.kode :
+                                    #strings.length(wilayah.kode) == 8 ? '/wilayah/desa/' + wilayah.kode : ''}"
+                 hx-target="#wilayah-results"
+                 hx-trigger="click"
+                 th:onclick="|loadDetail('${wilayah.kode}')|">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1" th:text="${wilayah.nama}">Wilayah Name</h6>
+                        <small class="text-muted">
+                            <span th:text="${wilayah.kode}">Code</span>
+                            <span th:if="${wilayah.ibukota}" th:text="${' - Ibukota: ' + wilayah.ibukota}"></span>
+                        </small>
+                    </div>
+                    <div>
+                        <span class="badge badge-level"
+                              th:classappend="${wilayah.level == 'Provinsi' ? 'bg-primary' :
+                                              wilayah.level == 'Kabupaten/Kota' ? 'bg-success' :
+                                              wilayah.level == 'Kecamatan' ? 'bg-info' : 'bg-warning'}"
+                              th:text="${wilayah.level}">
+                            Level
+                        </span>
+                        <span th:if="${#strings.length(wilayah.kode) < 13}" class="ms-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chevron-right" viewBox="0 0 16 16">
+                                <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
+                            </svg>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div th:if="${wilayahList == null or wilayahList.isEmpty()}" class="alert alert-info">
+            <p class="mb-0">No data found</p>
+        </div>
+    </div>
+</body>
+</html>
