@@ -1,0 +1,42 @@
+# Ignore build artifacts
+target/
+!target/*.jar
+
+# Ignore IDE files
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Ignore Git
+.git/
+.gitignore
+.github/
+
+# Ignore documentation
+README.md
+LICENSE
+*.md
+
+# Ignore test files
+src/test/
+
+# Ignore logs
+*.log
+logs/
+
+# Ignore temp files
+tmp/
+temp/
+*.tmp
+*.swp
+*~
+
+# Ignore Docker files (prevent recursion)
+Dockerfile
+.dockerignore
+
+# Ignore CI/CD files
+.travis.yml
+.gitlab-ci.yml
+azure-pipelines.yml
