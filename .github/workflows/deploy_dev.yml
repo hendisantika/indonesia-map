@@ -32,14 +32,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Note: LFS disabled to avoid bandwidth quota issues
+      # Migration files are included in the Maven build from src/main/resources
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          lfs: true
-
-      - name: Checkout LFS objects
-        run: git lfs pull
+          lfs: false
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
@@ -82,10 +81,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          lfs: true
-
-      - name: Checkout LFS objects
-        run: git lfs pull
+          lfs: false
 
       - name: Set up JDK 25
         uses: actions/setup-java@v5
