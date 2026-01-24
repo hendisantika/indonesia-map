@@ -12,8 +12,8 @@ env:
   DEPLOY_PATH: /home/deployer/maps
   # Database Configuration
   DB_HOST: localhost
-  DB_PORT: 13306
-  DB_NAME: wilayah_indo3
+  DB_PORT: 3306
+  DB_NAME: wilayah_indo
   # Application Configuration
   SERVER_PORT: 2000
   SPRING_PROFILE: dev
