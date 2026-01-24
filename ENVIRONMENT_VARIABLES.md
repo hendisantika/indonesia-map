@@ -70,8 +70,10 @@ The application supports multiple Spring profiles:
 #### `SERVER_PORT`
 - **Description**: HTTP server port
 - **Required**: No
-- **Default**: `8080`
-- **Example**: `SERVER_PORT=8080`
+- **Default**:
+  - Dev profile: `2000`
+  - Local profile: `8080`
+- **Example**: `SERVER_PORT=2000`
 
 ---
 
@@ -98,12 +100,12 @@ docker-compose up
 ```bash
 docker run -d \
   --name indonesia-map \
-  -p 8080:8080 \
+  -p 2000:2000 \
   -e SPRING_PROFILES_ACTIVE=dev \
   -e DB_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
   -e DB_USERNAME=yu71 \
   -e DB_PASSWORD=53cret \
-  -e SERVER_PORT=8080 \
+  -e SERVER_PORT=2000 \
   --network host \
   hendisantika/indonesia-map:latest
 ```
@@ -139,7 +141,7 @@ env:
   DB_NAME: wilayah_indo3
 
   # Application Configuration
-  SERVER_PORT: 8080
+  SERVER_PORT: 2000
   SPRING_PROFILE: dev
 ```
 
@@ -238,11 +240,11 @@ docker exec indonesia-map env | grep SPRING_PROFILES_ACTIVE
 
 **Check**: SERVER_PORT is not conflicting
 ```bash
-# Check what's using port 8080
-netstat -tlnp | grep 8080
+# Check what's using port 2000
+netstat -tlnp | grep 2000
 
 # Or change the port
-docker run ... -e SERVER_PORT=8081 -p 8081:8081 ...
+docker run ... -e SERVER_PORT=3000 -p 3000:3000 ...
 ```
 
 ---

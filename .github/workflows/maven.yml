@@ -15,7 +15,7 @@ env:
   DB_PORT: 13306
   DB_NAME: wilayah_indo3
   # Application Configuration
-  SERVER_PORT: 8080
+  SERVER_PORT: 2000
   SPRING_PROFILE: dev
 
 jobs:
@@ -123,7 +123,7 @@ jobs:
           sleep 10
 
           # Check health
-          curl -f http://localhost:8080/actuator/health || curl -f http://localhost:8080/ || echo "Warning: Health check failed"
+          curl -f http://localhost:2000/actuator/health || curl -f http://localhost:2000/ || echo "Warning: Health check failed"
 
     - name: Deployment Summary
       run: |

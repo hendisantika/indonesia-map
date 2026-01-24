@@ -208,9 +208,19 @@ These variables are injected from GitHub Actions secrets and environment variabl
 
 The container uses `--network host` to access the MySQL database running on the host.
 
+### Nginx Reverse Proxy
+
+The application is accessible via Nginx reverse proxy:
+- **Domain**: http://map.persislabs.my.id
+- **Backend**: http://127.0.0.1:2000
+- **Config**: `/etc/nginx/sites-available/map.persislabs.my.id.conf`
+
+Nginx configuration proxies HTTP traffic on port 80 to the application running on port 2000.
+
 ### Port Mapping
 
-- Application: `8080:8080`
+- Application (dev profile): `2000:2000`
+- Application (local): `8080:8080`
 - MySQL: `13306:3306`
 
 ## Manual Deployment
@@ -235,12 +245,12 @@ docker rm indonesia-map
 docker run -d \
   --name indonesia-map \
   --restart unless-stopped \
-  -p 8080:8080 \
+  -p 2000:2000 \
   -e SPRING_PROFILES_ACTIVE="dev" \
   -e DB_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
   -e DB_USERNAME="yu71" \
   -e DB_PASSWORD="53cret" \
-  -e SERVER_PORT="8080" \
+  -e SERVER_PORT="2000" \
   --network host \
   hendisantika/indonesia-map:latest
 
@@ -333,7 +343,7 @@ docker login -u hendisantika
 
 ### Application Not Accessible
 
-**Problem:** Can't access http://103.31.204.189:8080
+**Problem:** Can't access http://103.31.204.189:2000 or http://map.persislabs.my.id
 
 **Solution:**
 ```bash
@@ -344,11 +354,15 @@ docker ps | grep indonesia-map
 docker logs --tail 50 indonesia-map
 
 # Verify port is listening
-netstat -tlnp | grep 8080
+netstat -tlnp | grep 2000
 
 # Check firewall
 sudo ufw status
-sudo ufw allow 8080/tcp
+sudo ufw allow 2000/tcp
+
+# Check Nginx is proxying correctly
+sudo nginx -t
+sudo systemctl status nginx
 ```
 
 ### LFS Files Not Pulling
@@ -371,10 +385,13 @@ sudo ufw allow 8080/tcp
 
 ```bash
 # From server
-curl http://localhost:8080/actuator/health
+curl http://localhost:2000/actuator/health
 
-# From external
-curl http://103.31.204.189:8080/actuator/health
+# From external (via Nginx)
+curl http://map.persislabs.my.id/actuator/health
+
+# Direct port access
+curl http://103.31.204.189:2000/actuator/health
 ```
 
 ### View Recent Deployments
@@ -406,12 +423,12 @@ docker rm indonesia-map
 docker run -d \
   --name indonesia-map \
   --restart unless-stopped \
-  -p 8080:8080 \
+  -p 2000:2000 \
   -e SPRING_PROFILES_ACTIVE="dev" \
   -e DB_URL="jdbc:mysql://localhost:13306/wilayah_indo3?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true" \
   -e DB_USERNAME="yu71" \
   -e DB_PASSWORD="53cret" \
-  -e SERVER_PORT="8080" \
+  -e SERVER_PORT="2000" \
   --network host \
   hendisantika/indonesia-map:[previous-tag]
 ```

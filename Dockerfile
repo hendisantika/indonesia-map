@@ -35,7 +35,7 @@ USER appuser
 
 # Environment variables (can be overridden at runtime)
 ENV SPRING_PROFILES_ACTIVE=dev \
-    SERVER_PORT=8080 \
+    SERVER_PORT=2000 \
     DB_URL="" \
     DB_USERNAME="" \
     DB_PASSWORD=""

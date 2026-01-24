@@ -98,7 +98,7 @@ Defined in workflows:
 ### Application Configuration
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `SERVER_PORT` | 8080 | Application port |
+| `SERVER_PORT` | 2000 | Application port (dev profile) |
 | `SPRING_PROFILE` | dev | Spring profile for deployment |
 
 ---
