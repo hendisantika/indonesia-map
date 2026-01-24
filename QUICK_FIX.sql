@@ -1,54 +1,30 @@
 -- =====================================================
--- QUICK FIX: Remove Failed Migration and Retry
+-- QUICK FIX: Remove Failed Migrations
 -- =====================================================
 -- Run this directly in IntelliJ Database Console
+-- For detailed steps, see: FIX_STEPS.md
+-- For comprehensive checks, use: RUN_IN_CONSOLE.sql
 -- =====================================================
 
--- Step 1: Check current status
-SELECT '=== Current Flyway History ===' AS info;
+-- Show failed migrations
 SELECT
-    installed_rank,
     version,
     description,
     success,
-    execution_time,
-    installed_on
-FROM flyway_schema_history
-ORDER BY installed_rank DESC
-LIMIT 10;
-
--- Step 2: Show failed migrations
-SELECT '=== Failed Migrations ===' AS info;
-SELECT
-    version,
-    description,
-    script,
     installed_on
 FROM flyway_schema_history
 WHERE success = 0;
 
--- Step 3: Delete failed migration records
-SELECT '=== Removing Failed Migrations ===' AS info;
+-- Delete failed migration records
 DELETE FROM flyway_schema_history WHERE success = 0;
 
--- Step 4: Verify cleanup
-SELECT '=== After Cleanup ===' AS info;
-SELECT
-    installed_rank,
-    version,
-    description,
-    success
-FROM flyway_schema_history
-ORDER BY installed_rank DESC
-LIMIT 10;
+-- Verify cleanup
+SELECT '✓ Failed migrations removed!' AS status;
 
 -- =====================================================
 -- NEXT STEPS:
 -- =====================================================
--- 1. Stop your Spring Boot application
--- 2. Restart it: mvn spring-boot:run
--- 3. Watch the console for migration success
--- 4. Flyway will retry V16, V17, V18 with fixed SQL
+-- 1. Restart application: mvn spring-boot:run
+-- 2. V18 will normalize Cangkuang and Banjaran codes
+-- 3. Run VERIFY.sql to check results
 -- =====================================================
-
-SELECT '=== DONE! Now restart your application ===' AS info;
