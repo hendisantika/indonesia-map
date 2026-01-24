@@ -309,6 +309,28 @@ For issues and feature requests, please create an issue in the repository.
 - **Memory**: Recommend at least 2 GB RAM for MySQL container
 - **Git LFS**: Ensure Git LFS is installed before cloning to download large SQL files (832 MB)
 
+## Image Screen shot
+
+Home Page
+
+![Home Page](img/home.png "Home Page")
+
+Provinsi Page
+
+![Provinsi Page](img/provinsi.png "Provinsi Page")
+
+Kabupaten/Kota Page
+
+![Kabupaten/Kota Page](img/kabupaten.png "Kabupaten/Kota Page")
+
+Kecamatan Page
+
+![Kecamatan Page](img/kecamatan.png "Kecamatan Page")
+
+Kelurahan Page
+
+![Kelurahan Page](img/kelurahan.png "Kelurahan Page")
+
 ## Technical Highlights
 
 ✨ **Key Features**:
