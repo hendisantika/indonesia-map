@@ -20,6 +20,7 @@ The application supports multiple Spring profiles:
 - **Activation**: Set `SPRING_PROFILES_ACTIVE=dev`
 - **SQL Logging**: Disabled for performance
 - **Caching**: Thymeleaf caching enabled
+- **Docker Compose**: Disabled (uses existing MySQL on server)
 
 ---
 
