@@ -95,7 +95,7 @@ jobs:
           cd ${{ env.DEPLOY_PATH }}
 
           # Pull latest Docker image
-          docker pull ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:latest
+          docker pull ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}
 
           # Stop and remove old container
           docker stop indonesia-map || true
