@@ -5,6 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:text="${title != null ? title + ' - Data Wilayah Indonesia' : 'Data Wilayah Indonesia'}">Data Wilayah Indonesia</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <link rel="icon" type="image/x-icon" th:href="@{/favicon.ico}">
+    <link rel="apple-touch-icon" th:href="@{/favicon.svg}">
+    <link rel="manifest" th:href="@{/site.webmanifest}">
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Data Wilayah Administrasi Pemerintahan Indonesia - Peta interaktif dengan informasi lengkap provinsi, kabupaten, kecamatan, dan desa di Indonesia">
+    <meta name="keywords" content="wilayah indonesia, peta indonesia, data administrasi, provinsi, kabupaten, kecamatan, desa, kemendagri">
+    <meta name="author" content="Hendi Santika">
+    <meta name="theme-color" content="#3f51b5">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://map.persislabs.my.id/">
+    <meta property="og:title" content="Data Wilayah Indonesia - Interactive Map">
+    <meta property="og:description" content="Peta interaktif data wilayah administrasi pemerintahan Indonesia dengan informasi lengkap hingga tingkat desa">
+    <meta property="og:image" th:content="@{/favicon.svg}">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="http://map.persislabs.my.id/">
+    <meta property="twitter:title" content="Data Wilayah Indonesia - Interactive Map">
+    <meta property="twitter:description" content="Peta interaktif data wilayah administrasi pemerintahan Indonesia dengan informasi lengkap hingga tingkat desa">
+    <meta property="twitter:image" th:content="@{/favicon.svg}">
+
     <!-- W3.CSS Framework -->
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <link rel="stylesheet" id="theme-css" href="https://www.w3schools.com/lib/w3-theme-indigo.css">
