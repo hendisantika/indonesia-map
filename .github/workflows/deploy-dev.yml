@@ -15,7 +15,7 @@ env:
   DOCKER_USERNAME: hendisantika
   DOCKER_IMAGE_NAME: indonesia-map
   DEV_SERVER_HOST: 103.31.204.189
-  DEV_SERVER_USER: mhdcdev
+  DEV_SERVER_USER: deployer
   DEV_SERVER_PORT: 22
   CONTAINER_NAME: indonesia-map
   APP_PORT: 2000
