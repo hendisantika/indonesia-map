@@ -184,7 +184,7 @@ jobs:
               --restart unless-stopped \
               -p ${{ env.SERVER_PORT }}:${{ env.SERVER_PORT }} \
               -e SPRING_PROFILES_ACTIVE="${{ env.SPRING_PROFILE }}" \
-              -e DB_URL="${{ secrets.DB_URL }}" \
+              -e DB_URL="${{ vars.DB_URL }}" \
               -e DB_USERNAME="${{ secrets.DB_USERNAME }}" \
               -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
               -e SERVER_PORT="${{ env.SERVER_PORT }}" \
@@ -210,6 +210,7 @@ jobs:
           echo "**Image:** \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Server:** \`${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Path:** \`${{ env.DEPLOY_PATH }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**DB_URL:** \`${{ vars.DB_URL }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Port:** \`${{ env.SERVER_PORT }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Profile:** \`${{ env.SPRING_PROFILE }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
