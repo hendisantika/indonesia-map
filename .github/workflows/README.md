@@ -75,6 +75,91 @@ This directory contains GitHub Actions workflows for CI/CD automation.
 
 ---
 
+### 3. Deploy to Dev Server (`deploy-dev.yml`)
+
+**Purpose:** Build Docker image, push to Docker Hub, and deploy to dev server
+
+**Triggers:**
+- Push to `main` branch
+- Manual workflow dispatch (with optional tag parameter)
+
+**Steps:**
+
+#### Build and Push Stage
+1. Checkout repository with Git LFS
+2. Pull LFS objects (large SQL migration files)
+3. Set up Docker Buildx
+4. Login to Docker Hub
+5. Determine image tag (from input or default: 16)
+6. Build multi-platform Docker image (linux/amd64)
+7. Push to Docker Hub with tags:
+   - `hendisantika/indonesia-map:{tag}` (e.g., 16)
+   - `hendisantika/indonesia-map:latest`
+8. Use GitHub Actions cache for faster builds
+
+#### Deploy Stage
+9. Configure SSH for dev server access
+10. Clean failed Flyway migrations from database
+11. SSH to dev server (103.31.204.189)
+12. Login to Docker Hub on server
+13. Stop and remove old container
+14. Pull new image from Docker Hub
+15. Start new container with environment variables
+16. Wait for application initialization (15 seconds)
+17. Show container status and initial logs
+18. Verify deployment (container running + health check)
+19. Generate deployment summary
+
+**Duration:** ~5-8 minutes (build) + 10-15 minutes (migrations)
+
+**Required Secrets:**
+- `DOCKER_TOKEN` - Docker Hub personal access token
+- `DEV_SERVER_SSH_KEY` - SSH private key for dev server access
+- `DB_PASSWORD` - Database password
+
+**Environment Variables:**
+- `DOCKER_USERNAME`: hendisantika
+- `DOCKER_IMAGE_NAME`: indonesia-map
+- `DEV_SERVER_HOST`: 103.31.204.189
+- `DEV_SERVER_USER`: mhdcdev
+- `DEV_SERVER_PORT`: 22
+- `CONTAINER_NAME`: indonesia-map
+- `APP_PORT`: 2000
+
+**Database Configuration:**
+- Host: 103.31.204.189 (same as dev server)
+- Port: 3306
+- Database: wilayah_indo
+- User: deployer
+
+**Manual Trigger:**
+```bash
+# Trigger with default tag (16)
+gh workflow run deploy-dev.yml
+
+# Trigger with custom tag
+gh workflow run deploy-dev.yml -f tag=17
+```
+
+**Badge:**
+```markdown
+[![Deploy to Dev Server](https://github.com/hendisantika/indonesia-map/actions/workflows/deploy-dev.yml/badge.svg)](https://github.com/hendisantika/indonesia-map/actions/workflows/deploy-dev.yml)
+```
+
+**Access After Deployment:**
+- Application: http://103.31.204.189:2000
+- Health: http://103.31.204.189:2000/actuator/health
+- Boundary API Example: http://103.31.204.189:2000/wilayah/api/boundary/31
+
+**Migration Progress:**
+The deployment will take 10-15 minutes for Flyway migrations to complete. Monitor with:
+```bash
+ssh mhdcdev@103.31.204.189
+docker logs -f indonesia-map | grep -E 'Migrating|Successfully'
+```
+
+---
+
 ## Environment Variables
 
 Defined in workflows:
@@ -92,8 +177,19 @@ Defined in workflows:
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `DB_HOST` | localhost | Database host on dev server |
-| `DB_PORT` | 13306 | Database port |
-| `DB_NAME` | wilayah_indo3 | Database name |
+| `DB_PORT` | 13306 | Database port (local dev) |
+| `DB_NAME` | wilayah_indo | Database name |
+
+### Docker Hub Configuration (deploy-dev.yml)
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `DOCKER_USERNAME` | hendisantika | Docker Hub username |
+| `DOCKER_IMAGE_NAME` | indonesia-map | Docker image name |
+| `DEV_SERVER_HOST` | 103.31.204.189 | Dev server IP address |
+| `DEV_SERVER_USER` | mhdcdev | SSH user for deployment |
+| `DEV_SERVER_PORT` | 22 | SSH port |
+| `CONTAINER_NAME` | indonesia-map | Docker container name |
+| `APP_PORT` | 2000 | Application port |
 
 ### Application Configuration
 | Variable | Value | Description |
@@ -114,15 +210,21 @@ Run the interactive setup script:
 
 Or set manually:
 ```bash
-# Docker Hub
+# Docker Hub (for both maven.yml and deploy-dev.yml workflows)
 echo "your-docker-token" | gh secret set DOCKER_TOKEN
 
-# Database
+# Database (for maven.yml workflow)
 echo "yu71" | gh secret set DB_USERNAME
 echo "53cret" | gh secret set DB_PASSWORD
 
-# SSH Deployment
+# SSH Deployment (for maven.yml workflow)
 cat ~/.ssh/indonesia-map-deploy | gh secret set SSH_PRIVATE_KEY
+
+# Dev Server SSH (for deploy-dev.yml workflow)
+cat ~/.ssh/dev-server-key | gh secret set DEV_SERVER_SSH_KEY
+
+# Database Password (for deploy-dev.yml workflow)
+echo "0nePiece2025!" | gh secret set DB_PASSWORD
 ```
 
 See [SECRETS_QUICK_REFERENCE.md](../../SECRETS_QUICK_REFERENCE.md) for details.
