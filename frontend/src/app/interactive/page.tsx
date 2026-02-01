@@ -213,6 +213,7 @@ export default function InteractivePage() {
 
     try {
       const data = await wilayahApi.getBoundaryData(kode);
+      console.log('Boundary data received:', { kode: data.kode, nama: data.nama, hasCoords: !!data.coordinates });
 
       markersLayerRef.current.clearLayers();
       boundaryLayerRef.current.clearLayers();
@@ -237,27 +238,31 @@ export default function InteractivePage() {
 
           // coordsArray is an array of polygons, each polygon is an array of [lat, lng] pairs
           if (Array.isArray(coordsArray) && coordsArray.length > 0) {
+            console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
             const polygonGroup = L.layerGroup();
 
-            coordsArray.forEach((polygon: any) => {
+            coordsArray.forEach((polygon: any, index: number) => {
               if (Array.isArray(polygon) && polygon.length > 0) {
+                console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
                 // Create Leaflet polygon
-                L.polygon(polygon, {
+                const leafletPolygon = L.polygon(polygon, {
                   color: '#3388ff',
                   fillColor: '#3388ff',
                   fillOpacity: 0.2,
                   weight: 2,
-                })
-                  .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
-                  .addTo(polygonGroup);
+                });
+                leafletPolygon.bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`);
+                leafletPolygon.addTo(polygonGroup);
               }
             });
 
             polygonGroup.addTo(boundaryLayerRef.current);
+            console.log(`Added ${boundaryLayerRef.current.getLayers().length} layers to boundary layer`);
 
             // Fit map to polygon bounds
             if (boundaryLayerRef.current.getLayers().length > 0) {
               const bounds = boundaryLayerRef.current.getBounds();
+              console.log('Fitting map to bounds:', bounds);
               mapRef.current.fitBounds(bounds, { padding: [50, 50] });
             }
           }
