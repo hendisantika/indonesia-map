@@ -124,6 +124,7 @@ export default function InteractivePage() {
   };
 
   const handleProvinsiChange = async (kode: string) => {
+    console.log('handleProvinsiChange called with:', kode);
     setSelectedProvinsi(kode);
     setSelectedKabupaten('');
     setSelectedKecamatan('');
@@ -134,6 +135,7 @@ export default function InteractivePage() {
 
     if (kode) {
       try {
+        console.log('Fetching detail and kabupaten for:', kode);
         const [detail, kabupatenData] = await Promise.all([
           wilayahApi.getByKode(kode),
           wilayahApi.getKabupatenByProvinsi(kode),
@@ -141,6 +143,7 @@ export default function InteractivePage() {
 
         setDetailWilayah(detail);
         setKabupatenList(kabupatenData);
+        console.log('About to call loadBoundary for:', kode);
         await loadBoundary(kode);
       } catch (err) {
         console.error('Error loading provinsi:', err);
@@ -207,7 +210,18 @@ export default function InteractivePage() {
   };
 
   const loadBoundary = async (kode: string) => {
-    if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current || !LeafletRef.current) return;
+    console.log('loadBoundary called with kode:', kode);
+    console.log('Refs status:', {
+      map: !!mapRef.current,
+      markers: !!markersLayerRef.current,
+      boundary: !!boundaryLayerRef.current,
+      leaflet: !!LeafletRef.current
+    });
+
+    if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current || !LeafletRef.current) {
+      console.error('Early return: One or more refs are null');
+      return;
+    }
 
     const L = LeafletRef.current;
 
@@ -241,7 +255,7 @@ export default function InteractivePage() {
             console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
             const polygonGroup = L.layerGroup();
 
-            coordsArray.forEach((polygon: number[][], index: number) => {
+            coordsArray.forEach((polygon: [number, number][], index: number) => {
               if (Array.isArray(polygon) && polygon.length > 0) {
                 console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
                 // Create Leaflet polygon
@@ -257,11 +271,14 @@ export default function InteractivePage() {
             });
 
             polygonGroup.addTo(boundaryLayerRef.current);
-            console.log(`Added ${boundaryLayerRef.current.getLayers().length} layers to boundary layer`);
+            console.log(`Added ${polygonGroup.getLayers().length} layers to polygon group`);
 
             // Fit map to polygon bounds
-            if (boundaryLayerRef.current.getLayers().length > 0) {
-              const bounds = boundaryLayerRef.current.getBounds();
+            const layers = polygonGroup.getLayers();
+            if (layers.length > 0) {
+              // Get bounds from first polygon layer
+              const firstPolygon = layers[0] as L.Polygon;
+              const bounds = firstPolygon.getBounds();
               console.log('Fitting map to bounds:', bounds);
               mapRef.current.fitBounds(bounds, { padding: [50, 50] });
             }
