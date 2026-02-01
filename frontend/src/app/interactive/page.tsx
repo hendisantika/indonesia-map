@@ -6,9 +6,7 @@ import { Wilayah, BoundaryData } from '@/types/wilayah';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import Link from 'next/link';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { fixLeafletIcon } from '@/lib/leaflet-icon-fix';
+import type L from 'leaflet';
 
 export default function InteractivePage() {
   // State for dropdown selections
@@ -25,29 +23,53 @@ export default function InteractivePage() {
   const [detailWilayah, setDetailWilayah] = useState<Wilayah | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const boundaryLayerRef = useRef<L.LayerGroup | null>(null);
+  const LeafletRef = useRef<typeof L | null>(null);
 
-  // Initialize map
+  // Initialize client-side only
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    setIsClient(true);
+  }, []);
 
-    fixLeafletIcon();
+  // Initialize map (client-side only)
+  useEffect(() => {
+    if (!isClient || !mapContainerRef.current) return;
 
-    if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current).setView([-2.5489, 118.0149], 5);
+    const initMap = async () => {
+      try {
+        // Dynamic import of Leaflet
+        const LeafletModule = await import('leaflet');
+        const { fixLeafletIcon } = await import('@/lib/leaflet-icon-fix');
+        await import('leaflet/dist/leaflet.css');
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 18,
-      }).addTo(mapRef.current);
+        const L = LeafletModule.default;
+        LeafletRef.current = L;
 
-      markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
-      boundaryLayerRef.current = L.layerGroup().addTo(mapRef.current);
-    }
+        fixLeafletIcon();
+
+        if (!mapRef.current && mapContainerRef.current) {
+          mapRef.current = L.map(mapContainerRef.current).setView([-2.5489, 118.0149], 5);
+
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18,
+          }).addTo(mapRef.current);
+
+          markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
+          boundaryLayerRef.current = L.layerGroup().addTo(mapRef.current);
+        }
+      } catch (error) {
+        console.error('Error initializing map:', error);
+        setError('Failed to initialize map');
+      }
+    };
+
+    initMap();
 
     return () => {
       if (mapRef.current) {
@@ -55,7 +77,7 @@ export default function InteractivePage() {
         mapRef.current = null;
       }
     };
-  }, []);
+  }, [isClient]);
 
   // Load provinsi list on mount
   useEffect(() => {
@@ -79,10 +101,12 @@ export default function InteractivePage() {
   };
 
   const showProvincesOnMap = (provinces: Wilayah[]) => {
-    if (!mapRef.current || !markersLayerRef.current) return;
+    if (!mapRef.current || !markersLayerRef.current || !LeafletRef.current) return;
 
     markersLayerRef.current.clearLayers();
     boundaryLayerRef.current?.clearLayers();
+
+    const L = LeafletRef.current;
 
     provinces.forEach((prov) => {
       if (prov.lat && prov.lng && markersLayerRef.current) {
@@ -183,7 +207,9 @@ export default function InteractivePage() {
   };
 
   const loadBoundary = async (kode: string) => {
-    if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current) return;
+    if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current || !LeafletRef.current) return;
+
+    const L = LeafletRef.current;
 
     try {
       const data = await wilayahApi.getBoundaryData(kode);
