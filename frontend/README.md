@@ -66,8 +66,10 @@ frontend/
 ├── src/
 │   ├── app/
 │   │   ├── page.tsx              # Home page (provinces list)
+│   │   ├── interactive/
+│   │   │   └── page.tsx          # Interactive selector with hierarchical dropdowns
 │   │   ├── map/
-│   │   │   └── page.tsx          # Interactive map page with all provinces
+│   │   │   └── page.tsx          # All provinces map view
 │   │   ├── wilayah/[kode]/
 │   │   │   └── page.tsx          # Dynamic route for region details with map
 │   │   └── layout.tsx            # Root layout
@@ -101,17 +103,54 @@ The frontend consumes the following API v2 endpoints:
 
 ## Usage
 
-1. **Browse Provinces:** Visit the home page (`/`) to see all 38 provinces in card format
-2. **Interactive Map:** Click "🗺️ Lihat Peta" button to view all provinces on an interactive OpenStreetMap
-3. **View Details:** Click on any province card or map marker to see detailed information
-4. **Region Maps:** Each region detail page includes an interactive map showing boundaries and location
-5. **Navigate Hierarchy:** Continue clicking through to explore: Provinsi → Kabupaten → Kecamatan → Desa
-6. **Search:** Use the search bar to find any region by name across all administrative levels
-7. **Map Interactions:**
+### Pages Overview
+
+1. **Home Page** (`/`)
+   - Browse all 38 provinces in card format
+   - Search for any region by name
+   - Quick navigation to map views
+
+2. **Interactive Selector Page** (`/interactive`) ⭐ NEW
+   - Hierarchical dropdown selectors: Provinsi → Kabupaten → Kecamatan → Desa
+   - Real-time boundary visualization on map when region is selected
+   - Side panel with detailed region information
+   - Statistics panel showing total regions
+   - **Same functionality as the Thymeleaf template!**
+
+3. **All Provinces Map** (`/map`)
+   - View all provinces on a single interactive map
+   - Click markers or boundaries to see information
+   - Side panel with selected province details
+
+4. **Region Detail Pages** (`/wilayah/{kode}`)
+   - Detailed information about specific region
+   - Interactive map with boundaries
+   - Navigate to sub-regions
+
+### How to Use
+
+1. **Interactive Selector (Recommended):**
+   - Click "🎯 Interactive Map" from home page
+   - Select Provinsi from dropdown → boundary appears on map
+   - Select Kabupaten → see kabupaten boundary
+   - Select Kecamatan → see kecamatan boundary
+   - Select Desa/Kelurahan → see desa boundary
+   - View details in the side panel
+
+2. **Browse by Cards:**
+   - Visit home page to see all provinces
+   - Click on any province card to see details
+   - Continue navigating through sub-regions
+
+3. **Search:**
+   - Use the search bar to find any region by name
+   - Works across all administrative levels
+
+4. **Map Interactions:**
    - Click markers or boundaries to see region information
    - Zoom and pan to explore different areas
-   - Popup windows show quick region details
-   - Click "Lihat Detail" to navigate to the full detail page
+   - Reset view button to go back to Indonesia view
+   - "Tampilkan Provinsi" to show all province markers
 
 ## Development
 

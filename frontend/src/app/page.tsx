@@ -64,12 +64,20 @@ export default function Home() {
                 Jelajahi data provinsi, kabupaten, kecamatan, dan desa di Indonesia
               </p>
             </div>
-            <Link
-              href="/map"
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              🗺️ Lihat Peta
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                href="/interactive"
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              >
+                🎯 Interactive Map
+              </Link>
+              <Link
+                href="/map"
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              >
+                🗺️ Lihat Peta
+              </Link>
+            </div>
           </div>
         </header>
 
