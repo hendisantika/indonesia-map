@@ -241,7 +241,7 @@ export default function InteractivePage() {
             console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
             const polygonGroup = L.layerGroup();
 
-            coordsArray.forEach((polygon: any, index: number) => {
+            coordsArray.forEach((polygon: number[][], index: number) => {
               if (Array.isArray(polygon) && polygon.length > 0) {
                 console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
                 // Create Leaflet polygon
