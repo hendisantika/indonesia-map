@@ -157,7 +157,7 @@ jobs:
           fi
 
       - name: Deploy to Dev Server
-        uses: appleboy/ssh-action@v1.2.4
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ env.DEPLOY_HOST }}
           username: ${{ env.DEPLOY_USER }}
