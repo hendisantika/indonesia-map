@@ -424,10 +424,12 @@ export default function InteractivePage() {
                       {detailWilayah.penduduk.toLocaleString()} jiwa
                     </p>
                   )}
-                  <p>
-                    <span className="font-semibold">Koordinat:</span> {detailWilayah.lat.toFixed(4)},{' '}
-                    {detailWilayah.lng.toFixed(4)}
-                  </p>
+                  {detailWilayah.lat && detailWilayah.lng && (
+                    <p>
+                      <span className="font-semibold">Koordinat:</span> {detailWilayah.lat.toFixed(4)},{' '}
+                      {detailWilayah.lng.toFixed(4)}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <p className="text-gray-500 text-sm text-center">
