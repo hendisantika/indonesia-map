@@ -217,48 +217,56 @@ export default function InteractivePage() {
       markersLayerRef.current.clearLayers();
       boundaryLayerRef.current.clearLayers();
 
-      // Add marker for center point
-      if (data.geometry && typeof data.geometry === 'object' && 'lat' in data.geometry && 'lng' in data.geometry) {
-        L.marker([data.geometry.lat as number, data.geometry.lng as number])
+      // Add marker for center point using lat/lng from root level
+      if (data.lat && data.lng) {
+        L.marker([data.lat, data.lng])
           .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
           .addTo(markersLayerRef.current);
       }
 
       // Display boundary polygon
-      if (data.geometry) {
+      if (data.coordinates) {
         try {
-          let geoJsonData;
+          let coordsArray;
 
-          if (typeof data.geometry === 'string') {
-            geoJsonData = JSON.parse(data.geometry);
+          if (typeof data.coordinates === 'string') {
+            coordsArray = JSON.parse(data.coordinates);
           } else {
-            geoJsonData = data.geometry;
+            coordsArray = data.coordinates;
           }
 
-          // Check if it's GeoJSON format
-          if (geoJsonData.type && geoJsonData.coordinates) {
-            const geoJsonLayer = L.geoJSON(
-              {
-                type: 'Feature',
-                geometry: geoJsonData,
-                properties: {},
-              },
-              {
-                style: {
+          // coordsArray is an array of polygons, each polygon is an array of [lat, lng] pairs
+          if (Array.isArray(coordsArray) && coordsArray.length > 0) {
+            const polygonGroup = L.layerGroup();
+
+            coordsArray.forEach((polygon: any) => {
+              if (Array.isArray(polygon) && polygon.length > 0) {
+                // Create Leaflet polygon
+                L.polygon(polygon, {
                   color: '#3388ff',
                   fillColor: '#3388ff',
                   fillOpacity: 0.2,
                   weight: 2,
-                },
+                })
+                  .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
+                  .addTo(polygonGroup);
               }
-            )
-              .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
-              .addTo(boundaryLayerRef.current);
+            });
 
-            mapRef.current.fitBounds(geoJsonLayer.getBounds(), { padding: [50, 50] });
+            polygonGroup.addTo(boundaryLayerRef.current);
+
+            // Fit map to polygon bounds
+            if (boundaryLayerRef.current.getLayers().length > 0) {
+              const bounds = boundaryLayerRef.current.getBounds();
+              mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+            }
           }
         } catch (e) {
-          console.error('Error parsing boundary:', e);
+          console.error('Error parsing boundary coordinates:', e);
+          // Fallback to center point if boundary parsing fails
+          if (data.lat && data.lng) {
+            mapRef.current.setView([data.lat, data.lng], 8);
+          }
         }
       }
     } catch (err) {

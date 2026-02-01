@@ -15,7 +15,15 @@ export interface Wilayah {
 export interface BoundaryData {
   kode: string;
   nama: string;
-  geometry: any;
+  level: string;
+  lat: number;
+  lng: number;
+  coordinates: string | any[][];
+  geometry?: {
+    lat: number;
+    lng: number;
+    coordinates: string | any[][];
+  };
 }
 
 export interface WilayahSelectOption {
