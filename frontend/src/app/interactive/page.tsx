@@ -42,13 +42,13 @@ export default function InteractivePage() {
 
     const initMap = async () => {
       try {
-        // Dynamic import of Leaflet
+        // Dynamic import of Leaflet (CSS is loaded via CDN in layout.tsx)
         const LeafletModule = await import('leaflet');
         const { fixLeafletIcon } = await import('@/lib/leaflet-icon-fix');
-        await import('leaflet/dist/leaflet.css');
 
         const L = LeafletModule.default;
         LeafletRef.current = L;
+        console.log('Leaflet loaded successfully');
 
         fixLeafletIcon();
 
