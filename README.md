@@ -487,6 +487,8 @@ Kelurahan Page
 
 ### Next.js Interactive Map Frontend
 
+#### Interactive Map Page (/interactive)
+
 Interactive Map - Loading State
 
 ![Interactive Map Loading](img/nextjs-loading.png "Map Loading State")
@@ -506,6 +508,28 @@ Interactive Map - Kecamatan Boundary
 Interactive Map - Desa Boundary
 
 ![Desa Boundary](img/nextjs-desa.png "Desa Boundary Display")
+
+#### Wilayah Detail Pages (/wilayah/[kode])
+
+Home Page - Region Overview
+
+![Home Page](img/home.png "Home Page - Region Overview")
+
+Detail Page - Provinsi with Kabupaten List
+
+![Provinsi Detail](img/details-provinsi.png "Provinsi Detail with Boundary and Sub-regions")
+
+Detail Page - Kabupaten/Kota with Kecamatan List
+
+![Kabupaten Detail](img/details-kota.png "Kabupaten Detail with Boundary and Kecamatan List")
+
+Detail Page - Kecamatan with Desa List
+
+![Kecamatan Detail](img/details-kecamatan.png "Kecamatan Detail with Boundary and Desa List")
+
+Detail Page - Desa/Kelurahan (Smallest Level)
+
+![Desa Detail](img/details-desa.png "Desa Detail with Boundary")
 
 ## Technical Highlights
 
