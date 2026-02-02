@@ -66,11 +66,25 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
               const pathData = JSON.parse(wilayah.path);
 
               if (Array.isArray(pathData)) {
+                // Determine if we need coordinate transformation based on kode length
+                const kodeLen = wilayah.kode.replace(/\./g, '').length;
+                const isKecamatanOrDesa = kodeLen > 5; // > 5 digits = kecamatan or desa
+
                 // Handle multiple polygons
-                // Path data is already in [lat, lng] format for Leaflet
                 pathData.forEach((polygon) => {
                   if (Array.isArray(polygon) && polygon.length > 0) {
-                    L.polygon(polygon, {
+                    let coords;
+
+                    if (isKecamatanOrDesa) {
+                      // Kecamatan/Desa: Extract first ring and swap [lng,lat] to [lat,lng]
+                      const ring = polygon[0];
+                      coords = ring.map((coord: number[]) => [coord[1], coord[0]]);
+                    } else {
+                      // Provinsi/Kabupaten: Already in [lat,lng] format
+                      coords = polygon;
+                    }
+
+                    L.polygon(coords, {
                       color: '#3b82f6',
                       fillColor: '#3b82f6',
                       fillOpacity: 0.2,
@@ -80,7 +94,13 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
                 });
 
                 // Fit map to show all boundaries
-                const allCoords = pathData.flat();
+                let allCoords;
+                if (isKecamatanOrDesa) {
+                  allCoords = pathData.map((p: any) => p[0].map((c: number[]) => [c[1], c[0]])).flat();
+                } else {
+                  allCoords = pathData.flat();
+                }
+
                 if (allCoords.length > 0) {
                   const bounds = L.latLngBounds(allCoords);
                   mapRef.current.fitBounds(bounds, { padding: [50, 50] });
