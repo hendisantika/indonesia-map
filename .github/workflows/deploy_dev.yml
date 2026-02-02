@@ -10,13 +10,16 @@ on:
     branches: [ main ]
     paths:
       - 'src/**'
+      - 'frontend/**'
       - '.github/workflows/deploy_dev.yml'
       - 'Dockerfile'
+      - 'Dockerfile.frontend'
       - 'pom.xml'
 
 env:
   DOCKER_USERNAME: hendisantika
   DOCKER_IMAGE_NAME: indonesia-map
+  DOCKER_FRONTEND_IMAGE_NAME: indonesia-map-frontend
   DEPLOY_HOST: 103.31.204.189
   DEPLOY_USER: deployer
   DEPLOY_PATH: /home/deployer/maps
@@ -29,11 +32,39 @@ env:
   SPRING_PROFILE: dev
 
 jobs:
-  build:
+  # Detect what changed
+  changes:
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
     steps:
-      # Note: LFS disabled to avoid bandwidth quota issues
-      # Migration files are included in the Maven build from src/main/resources
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check for changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'src/**'
+              - 'Dockerfile'
+              - 'pom.xml'
+              - '.github/workflows/deploy_dev.yml'
+            frontend:
+              - 'frontend/**'
+              - 'Dockerfile.frontend'
+              - '.github/workflows/deploy_dev.yml'
+
+  # ============================================================================
+  # BACKEND JOBS (Spring Boot)
+  # ============================================================================
+  build-backend:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    steps:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
@@ -67,15 +98,15 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Version: $VERSION"
 
-      # Optional: Update dependency graph
       - name: Update dependency graph
         uses: advanced-security/maven-dependency-submission-action@b275d12641ac2d2108b2cbb7598b154ad2f2cee8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  docker:
+  docker-backend:
     runs-on: ubuntu-latest
-    needs: build
+    needs: [changes, build-backend]
+    if: needs.changes.outputs.backend == 'true'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -114,6 +145,7 @@ jobs:
             type=raw,value=${{ github.run_number }}
             type=sha,prefix={{branch}}-
             type=ref,event=branch
+            type=raw,value=latest
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -130,9 +162,10 @@ jobs:
             GIT_COMMIT_MESSAGE=${{ github.event.head_commit.message }}
             GIT_VERSION_HASH=${{ github.sha }}
 
-  deploy:
-    needs: docker
-    name: Deploy to Dev Server
+  deploy-backend:
+    needs: [changes, docker-backend]
+    if: needs.changes.outputs.backend == 'true'
+    name: Deploy Backend to Dev Server
     runs-on: ubuntu-latest
     environment: development
     steps:
@@ -147,7 +180,6 @@ jobs:
           echo "Host: ${{ env.DEPLOY_HOST }}"
           echo "Port: 22"
 
-          # Test basic connectivity
           if timeout 10 bash -c "cat < /dev/null > /dev/tcp/${{ env.DEPLOY_HOST }}/22"; then
             echo "✓ Port is reachable"
           else
@@ -167,18 +199,14 @@ jobs:
           command_timeout: 30m
           debug: false
           script: |
-            # Navigate to deployment directory
             mkdir -p ${{ env.DEPLOY_PATH }}
             cd ${{ env.DEPLOY_PATH }}
 
-            # Pull latest Docker image
             docker pull ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}
 
-            # Stop and remove old container
             docker stop indonesia-map || true
             docker rm indonesia-map || true
 
-            # Run new container with dev profile
             docker run -d \
               --name indonesia-map \
               --restart unless-stopped \
@@ -191,30 +219,91 @@ jobs:
               --network host \
               ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}
 
-            # Clean up unused images
             docker image prune -f
-
-            # Show container status
             docker ps | grep indonesia-map
 
-            # Wait for app to start
             sleep 10
-
-            # Check health
             curl -f http://localhost:${{ env.SERVER_PORT }}/actuator/health || curl -f http://localhost:${{ env.SERVER_PORT }}/ || echo "Warning: Health check failed"
 
-      - name: Deployment Summary
+      - name: Backend Deployment Summary
         run: |
-          echo "## Deployment Complete! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "## Backend Deployment Complete! 🚀" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Image:** \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_IMAGE_NAME }}:${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Server:** \`${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Path:** \`${{ env.DEPLOY_PATH }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**DB_URL  :** \`${{ vars.DB_URL }}\`" >> $GITHUB_STEP_SUMMARY
           echo "**Port:** \`${{ env.SERVER_PORT }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "**Profile:** \`${{ env.SPRING_PROFILE }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Access URLs:" >> $GITHUB_STEP_SUMMARY
           echo "- Public: http://map.persislabs.my.id" >> $GITHUB_STEP_SUMMARY
-          echo "- Direct: http://${{ env.DEPLOY_HOST }}:${{ env.SERVER_PORT }}" >> $GITHUB_STEP_SUMMARY
           echo "- Health: http://map.persislabs.my.id/actuator/health" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================================================
+  # FRONTEND JOBS (Next.js)
+  # ============================================================================
+  docker-frontend:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}
+          tags: |
+            type=raw,value=${{ github.run_number }}
+            type=sha,prefix={{branch}}-
+            type=ref,event=branch
+            type=raw,value=latest
+
+      - name: Build and push Frontend Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          platforms: linux/amd64
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
+
+      - name: Frontend Build Summary
+        run: |
+          echo "## Frontend Docker Image Built! 📦" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Tags:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Pull Command:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker pull ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Run Command:" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d -p 3000:3000 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e NEXT_PUBLIC_API_URL=http://your-backend:8080 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
