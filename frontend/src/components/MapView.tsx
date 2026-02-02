@@ -61,18 +61,19 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
           }
 
           // Parse and display boundary path if available
-          if (wilayah.path) {
+          if (wilayah.path && mapRef.current) {
             try {
               const pathData = JSON.parse(wilayah.path);
+              const map = mapRef.current; // Store reference to prevent null issues
 
-              if (Array.isArray(pathData) && mapRef.current) {
+              if (Array.isArray(pathData) && map) {
                 // Determine if we need coordinate transformation based on kode length
                 const kodeLen = wilayah.kode.replace(/\./g, '').length;
                 const isKecamatanOrDesa = kodeLen > 5; // > 5 digits = kecamatan or desa
 
                 // Handle multiple polygons
                 pathData.forEach((polygon) => {
-                  if (!Array.isArray(polygon) || polygon.length === 0 || !mapRef.current) return;
+                  if (!Array.isArray(polygon) || polygon.length === 0) return;
 
                   try {
                     let coords;
@@ -87,13 +88,13 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
                       coords = polygon;
                     }
 
-                    if (coords && coords.length > 0 && mapRef.current) {
+                    if (coords && coords.length > 0) {
                       L.polygon(coords, {
                         color: '#3b82f6',
                         fillColor: '#3b82f6',
                         fillOpacity: 0.2,
                         weight: 2,
-                      }).addTo(mapRef.current);
+                      }).addTo(map);
                     }
                   } catch (err) {
                     console.error('Error creating polygon:', err);
@@ -112,9 +113,9 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
                     allCoords = pathData.flat();
                   }
 
-                  if (allCoords && allCoords.length > 0 && mapRef.current) {
+                  if (allCoords && allCoords.length > 0) {
                     const bounds = L.latLngBounds(allCoords);
-                    mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+                    map.fitBounds(bounds, { padding: [50, 50] });
                   }
                 } catch (err) {
                   console.error('Error fitting bounds:', err);
