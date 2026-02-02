@@ -2,11 +2,25 @@
 
 [![Java CI with Maven](https://github.com/hendisantika/indonesia-map/actions/workflows/maven-build.yml/badge.svg)](https://github.com/hendisantika/indonesia-map/actions/workflows/maven-build.yml)
 ![Java](https://img.shields.io/badge/Java-25-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.1-brightgreen)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.2-brightgreen)
 ![MySQL](https://img.shields.io/badge/MySQL-9.5.0-blue)
+![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black)
+![React](https://img.shields.io/badge/React-19.2.3-61dafb)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-A comprehensive Spring Boot application for exploring Indonesia's administrative boundaries with interactive map visualization using Thymeleaf and HTMX.
+A comprehensive full-stack application for exploring Indonesia's administrative boundaries with dual frontend options: a classic Thymeleaf+HTMX server-rendered interface and a modern Next.js+React SPA with advanced interactive map visualization.
+
+## Recent Updates
+
+### Version 2.0 - Next.js Frontend (February 2026)
+- ✨ **New React/Next.js Frontend**: Modern SPA with TypeScript and Tailwind CSS
+- 🗺️ **Enhanced Map Rendering**: Smart coordinate handling for all 87,068+ administrative boundaries
+- 🔄 **Automatic Coordinate Conversion**: Intelligent detection and transformation of GeoJSON formats
+- ⚡ **Optimized Loading**: Async map initialization with loading states and error handling
+- 📍 **Dynamic Center Calculation**: Auto-compute map centers from polygon bounds when coordinates are missing
+- 🎯 **Level-Specific Processing**: Different coordinate handling for Provinsi/Kabupaten vs Kecamatan/Desa
+- 🔧 **API v2**: New RESTful endpoints optimized for SPA integration
 
 ## Features
 
@@ -35,11 +49,12 @@ A comprehensive Spring Boot application for exploring Indonesia's administrative
 ## Technology Stack
 
 ### Backend
-- **Spring Boot**: 4.0.1
-- **ORM**: Spring Data JPA, Hibernate
+- **Java**: 25 (JDK 25)
+- **Spring Boot**: 4.0.2
+- **ORM**: Spring Data JPA, Hibernate 7.2.1
 - **Database**: MySQL 9.5.0 with spatial data (GeoJSON)
 - **Migration**: Flyway with Git LFS for large SQL files
-- **Build Tool**: Maven
+- **Build Tool**: Maven 3.9+
 - **API**: RESTful endpoints with CORS support
 
 ### Frontend Options
@@ -51,13 +66,13 @@ A comprehensive Spring Boot application for exploring Indonesia's administrative
 - **Map Library**: Leaflet 1.9.4
 
 #### Next.js + React (Client-Side)
-- **Framework**: Next.js 14+ (App Router)
-- **Language**: TypeScript
-- **UI Library**: React 18+
-- **Styling**: Tailwind CSS
-- **Map Library**: Leaflet 1.9.4 with React integration
-- **HTTP Client**: Axios
-- **Build Tool**: Turbopack (Next.js)
+- **Framework**: Next.js 16.1.6 (App Router with Turbopack)
+- **Language**: TypeScript 5
+- **UI Library**: React 19.2.3
+- **Styling**: Tailwind CSS 3.4+
+- **Map Library**: Leaflet 1.9.4 with dynamic imports
+- **HTTP Client**: Axios 1.13.4
+- **Node.js**: 18+ (recommended 20 LTS)
 
 ### Infrastructure
 - **Containerization**: Docker Compose
@@ -66,11 +81,20 @@ A comprehensive Spring Boot application for exploring Indonesia's administrative
 
 ## Prerequisites
 
+### Backend Requirements
 - **Java 25** (JDK 25 or higher)
-- **MySQL 9.5.0** (or compatible version)
+- **MySQL 9.5.0** (or compatible version 8.0+)
 - **Maven 3.9+**
-- **Docker & Docker Compose** (recommended)
+- **Docker & Docker Compose** (recommended for MySQL)
 - **Git LFS** (for cloning large migration files)
+
+### Frontend Requirements (Next.js)
+- **Node.js 18+** (recommended: Node.js 20 LTS)
+- **npm 9+** or **yarn 1.22+**
+
+### Development Tools
+- IDE with TypeScript support (VS Code, IntelliJ IDEA, etc.)
+- Modern web browser (Chrome, Firefox, Safari, Edge)
 
 ## Quick Start with Docker Compose
 
