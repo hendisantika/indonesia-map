@@ -254,10 +254,23 @@ export default function InteractivePage() {
     const L = LeafletRef.current;
     const markersLayer = markersLayerRef.current; // Store reference to prevent null during async
     const boundaryLayer = boundaryLayerRef.current; // Store reference to prevent null during async
+    const map = mapRef.current; // Store map reference
 
     try {
       const data = await wilayahApi.getBoundaryData(kode);
       console.log('Boundary data received:', { kode: data.kode, nama: data.nama, hasCoords: !!data.coordinates });
+
+      // Double-check layers and map are still valid after async operation
+      if (!markersLayer || !boundaryLayer || !map) {
+        console.error('Layers or map became null during async operation');
+        return;
+      }
+
+      // Ensure boundaryLayer is still on the map
+      if (!(boundaryLayer as any)._map) {
+        console.log('Boundary layer detached from map, re-adding...');
+        boundaryLayer.addTo(map);
+      }
 
       markersLayer.clearLayers();
       boundaryLayer.clearLayers();
@@ -285,7 +298,7 @@ export default function InteractivePage() {
           // - Kecamatan/Desa: array of polygons, each has rings, each ring is array of [lng,lat] pairs
           if (Array.isArray(coordsArray) && coordsArray.length > 0) {
             console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
-            const polygonGroup = L.layerGroup();
+            const createdPolygons: L.Polygon[] = [];
 
             const isKecamatanOrDesa = data.level === 'Kecamatan' || data.level === 'Desa/Kelurahan';
 
@@ -297,6 +310,10 @@ export default function InteractivePage() {
                   // Kecamatan/Desa have extra nesting: polygon[ring][points]
                   // Use first ring (polygon[0]) and swap [lng,lat] to [lat,lng]
                   const ring = polygon[0];
+                  if (!ring || !Array.isArray(ring) || ring.length === 0) {
+                    console.warn(`Skipping polygon ${index}: invalid ring data`);
+                    return;
+                  }
                   console.log(`Polygon ${index}: ${ring.length} points (from ring 0)`);
                   processedPolygon = ring.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
                   console.log(`First point after swap: [${processedPolygon[0][0]}, ${processedPolygon[0][1]}]`);
@@ -306,53 +323,70 @@ export default function InteractivePage() {
                   processedPolygon = polygon;
                 }
 
-                // Create Leaflet polygon
-                const leafletPolygon = L.polygon(processedPolygon, {
-                  color: '#3388ff',
-                  fillColor: '#3388ff',
-                  fillOpacity: 0.2,
-                  weight: 2,
-                });
-                leafletPolygon.bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`);
-                leafletPolygon.addTo(polygonGroup);
+                // Validate processed polygon has coordinates
+                if (processedPolygon && processedPolygon.length > 0) {
+                  try {
+                    // Create Leaflet polygon and add directly to boundaryLayer
+                    const leafletPolygon = L.polygon(processedPolygon, {
+                      color: '#3388ff',
+                      fillColor: '#3388ff',
+                      fillOpacity: 0.2,
+                      weight: 2,
+                    });
+                    leafletPolygon.bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`);
+                    leafletPolygon.addTo(boundaryLayer);
+                    createdPolygons.push(leafletPolygon);
+                  } catch (err) {
+                    console.error(`Error creating polygon ${index}:`, err);
+                  }
+                } else {
+                  console.warn(`Skipping polygon ${index}: no valid coordinates`);
+                }
               }
             });
 
-            polygonGroup.addTo(boundaryLayer);
-            console.log(`Added ${polygonGroup.getLayers().length} layers to polygon group`);
+            console.log(`Successfully added ${createdPolygons.length} polygon(s) to boundary layer`);
 
-            // Fit map to polygon bounds
-            const layers = polygonGroup.getLayers();
-            if (layers.length > 0) {
-              // Get bounds from all polygon layers
-              const firstPolygon = layers[0] as L.Polygon;
-              const bounds = firstPolygon.getBounds();
-              console.log('Fitting map to bounds:', bounds);
-              mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+            // Fit map to polygon bounds - include all polygons, not just the first one
+            if (createdPolygons.length > 0 && map) {
+              try {
+                // Create bounds that encompass all polygons (handles multi-polygon regions like islands)
+                let bounds = createdPolygons[0].getBounds();
+                for (let i = 1; i < createdPolygons.length; i++) {
+                  bounds.extend(createdPolygons[i].getBounds());
+                }
 
-              // If lat/lng are missing, add marker at polygon center
-              if (!data.lat || !data.lng) {
-                const center = bounds.getCenter();
-                console.log('Adding marker at polygon center:', center);
-                L.marker([center.lat, center.lng])
-                  .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
-                  .addTo(markersLayer);
+                console.log(`Fitting map to bounds of ${createdPolygons.length} polygon(s):`, bounds);
+                map.fitBounds(bounds, { padding: [50, 50] });
+
+                // If lat/lng are missing, add marker at polygon center
+                if ((!data.lat || !data.lng) && markersLayer) {
+                  const center = bounds.getCenter();
+                  console.log('Adding marker at polygon center:', center);
+                  L.marker([center.lat, center.lng])
+                    .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
+                    .addTo(markersLayer);
+                }
+              } catch (err) {
+                console.error('Error fitting bounds:', err);
               }
+            } else if (createdPolygons.length === 0) {
+              console.warn('No valid polygons created from boundary data');
             }
           }
         } catch (e) {
           console.error('Error parsing boundary coordinates:', e);
           // Fallback to center point if boundary parsing fails
-          if (data.lat && data.lng) {
-            mapRef.current.setView([data.lat, data.lng], 8);
+          if (data.lat && data.lng && map) {
+            map.setView([data.lat, data.lng], 8);
           } else {
             console.warn('No boundary coordinates and no lat/lng available for', data.kode);
           }
         }
-      } else if (data.lat && data.lng) {
+      } else if (data.lat && data.lng && map) {
         // No boundary coordinates, but we have lat/lng - just zoom to center point
         console.log('No boundary data, zooming to center point');
-        mapRef.current.setView([data.lat, data.lng], 10);
+        map.setView([data.lat, data.lng], 10);
       } else {
         console.warn('No boundary or coordinate data available for', data.kode);
       }
