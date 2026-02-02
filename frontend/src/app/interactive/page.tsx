@@ -252,19 +252,21 @@ export default function InteractivePage() {
     }
 
     const L = LeafletRef.current;
+    const markersLayer = markersLayerRef.current; // Store reference to prevent null during async
+    const boundaryLayer = boundaryLayerRef.current; // Store reference to prevent null during async
 
     try {
       const data = await wilayahApi.getBoundaryData(kode);
       console.log('Boundary data received:', { kode: data.kode, nama: data.nama, hasCoords: !!data.coordinates });
 
-      markersLayerRef.current.clearLayers();
-      boundaryLayerRef.current.clearLayers();
+      markersLayer.clearLayers();
+      boundaryLayer.clearLayers();
 
       // Add marker for center point using lat/lng from root level
       if (data.lat && data.lng) {
         L.marker([data.lat, data.lng])
           .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
-          .addTo(markersLayerRef.current);
+          .addTo(markersLayer);
       }
 
       // Display boundary polygon
@@ -316,7 +318,7 @@ export default function InteractivePage() {
               }
             });
 
-            polygonGroup.addTo(boundaryLayerRef.current);
+            polygonGroup.addTo(boundaryLayer);
             console.log(`Added ${polygonGroup.getLayers().length} layers to polygon group`);
 
             // Fit map to polygon bounds
@@ -334,7 +336,7 @@ export default function InteractivePage() {
                 console.log('Adding marker at polygon center:', center);
                 L.marker([center.lat, center.lng])
                   .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
-                  .addTo(markersLayerRef.current);
+                  .addTo(markersLayer);
               }
             }
           }
