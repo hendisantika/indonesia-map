@@ -23,6 +23,7 @@ export default function InteractivePage() {
   const [detailWilayah, setDetailWilayah] = useState<Wilayah | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [boundaryWarning, setBoundaryWarning] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
   const [mapReady, setMapReady] = useState(false);
 
@@ -132,11 +133,27 @@ export default function InteractivePage() {
   const showProvincesOnMap = (provinces: Wilayah[]) => {
     if (!mapRef.current || !markersLayerRef.current || !LeafletRef.current) return;
 
+    // Clear all layers
     markersLayerRef.current.clearLayers();
-    boundaryLayerRef.current?.clearLayers();
+
+    // Remove all boundary layers completely
+    if (boundaryLayerRef.current && mapRef.current) {
+      try {
+        // Remove the entire layer group from the map
+        if (mapRef.current.hasLayer(boundaryLayerRef.current)) {
+          mapRef.current.removeLayer(boundaryLayerRef.current);
+        }
+        // Clear the layer group's contents
+        boundaryLayerRef.current.clearLayers();
+      } catch (e) {
+        // Layer might not be on map
+      }
+      boundaryLayerRef.current = null;
+    }
 
     const L = LeafletRef.current;
 
+    // Show province markers only when no specific region is selected
     provinces.forEach((prov) => {
       if (prov.lat && prov.lng && markersLayerRef.current) {
         L.marker([prov.lat, prov.lng])
@@ -239,6 +256,9 @@ export default function InteractivePage() {
   };
 
   const loadBoundary = async (kode: string) => {
+    // Clear previous boundary warning
+    setBoundaryWarning(null);
+
     if (!mapReady) {
       console.warn('Map not ready yet, skipping boundary load');
       return;
@@ -246,14 +266,13 @@ export default function InteractivePage() {
 
     console.log('loadBoundary called with kode:', kode);
 
-    if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current || !LeafletRef.current) {
+    if (!mapRef.current || !markersLayerRef.current || !LeafletRef.current) {
       console.error('Map refs are null despite mapReady being true');
       return;
     }
 
     const L = LeafletRef.current;
     const markersLayer = markersLayerRef.current; // Store reference to prevent null during async
-    const boundaryLayer = boundaryLayerRef.current; // Store reference to prevent null during async
     const map = mapRef.current; // Store map reference
 
     try {
@@ -261,25 +280,40 @@ export default function InteractivePage() {
       console.log('Boundary data received:', { kode: data.kode, nama: data.nama, hasCoords: !!data.coordinates });
 
       // Double-check layers and map are still valid after async operation
-      if (!markersLayer || !boundaryLayer || !map) {
+      if (!markersLayer || !map) {
         console.error('Layers or map became null during async operation');
         return;
       }
 
-      // Ensure boundaryLayer is still on the map
-      if (!(boundaryLayer as any)._map) {
-        console.log('Boundary layer detached from map, re-adding...');
-        boundaryLayer.addTo(map);
+      // Clear all previous markers and boundaries to show only selected region
+      markersLayer.clearLayers();
+
+      // Remove old boundary layer completely
+      if (boundaryLayerRef.current) {
+        console.log('Removing old boundary layer...');
+        try {
+          // First, remove the entire layer group from the map
+          // This should remove all child layers automatically
+          if (map.hasLayer(boundaryLayerRef.current)) {
+            map.removeLayer(boundaryLayerRef.current);
+            console.log('Old boundary layer removed from map');
+          }
+          // Also clear the layer group's contents to be safe
+          boundaryLayerRef.current.clearLayers();
+        } catch (e) {
+          console.warn('Error removing old boundary layer:', e);
+        }
+        boundaryLayerRef.current = null;
       }
 
-      markersLayer.clearLayers();
-      boundaryLayer.clearLayers();
-
       // Add marker for center point using lat/lng from root level
-      if (data.lat && data.lng) {
+      if (data.lat != null && data.lng != null &&
+          !isNaN(data.lat) && !isNaN(data.lng)) {
         L.marker([data.lat, data.lng])
           .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
           .addTo(markersLayer);
+      } else {
+        console.warn(`No valid center coordinates for ${data.nama} (${data.kode})`);
       }
 
       // Display boundary polygon
@@ -288,6 +322,11 @@ export default function InteractivePage() {
           let coordsArray;
 
           if (typeof data.coordinates === 'string') {
+            // Handle empty string or whitespace
+            if (!data.coordinates.trim()) {
+              console.warn('Empty coordinates string for', data.kode);
+              throw new Error('Empty coordinates string');
+            }
             coordsArray = JSON.parse(data.coordinates);
           } else {
             coordsArray = data.coordinates;
@@ -296,56 +335,123 @@ export default function InteractivePage() {
           // coordsArray structure differs by level:
           // - Provinsi/Kabupaten: array of polygons, each is array of [lat,lng] pairs
           // - Kecamatan/Desa: array of polygons, each has rings, each ring is array of [lng,lat] pairs
+          if (!Array.isArray(coordsArray)) {
+            console.warn('Coordinates is not an array for', data.kode, typeof coordsArray);
+            throw new Error('Invalid coordinates format');
+          }
+
+          if (coordsArray.length === 0) {
+            console.warn('Empty coordinates array for', data.kode);
+            throw new Error('Empty coordinates array');
+          }
+
           if (Array.isArray(coordsArray) && coordsArray.length > 0) {
             console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
+            console.log('First element type:', typeof coordsArray[0], 'isArray:', Array.isArray(coordsArray[0]));
+            if (coordsArray[0]) {
+              console.log('First element length:', coordsArray[0].length);
+              console.log('First element sample:', coordsArray[0].slice(0, 2));
+            }
+
             const createdPolygons: L.Polygon[] = [];
 
-            const isKecamatanOrDesa = data.level === 'Kecamatan' || data.level === 'Desa/Kelurahan';
+            // Determine coordinate format based on kode length (more reliable than level string)
+            const kodeDigits = data.kode.replace(/\./g, '').length;
+            const isKecamatanOrDesa = kodeDigits > 5; // 6 digits (kecamatan) or 10 digits (desa)
+            console.log(`Kode: ${data.kode}, Digits: ${kodeDigits}, IsKecamatanOrDesa: ${isKecamatanOrDesa}`);
 
             coordsArray.forEach((polygon: any, index: number) => {
-              if (Array.isArray(polygon) && polygon.length > 0) {
-                let processedPolygon;
+              console.log(`Polygon ${index}: type=${typeof polygon}, isArray=${Array.isArray(polygon)}, length=${polygon?.length}`);
 
-                if (isKecamatanOrDesa) {
-                  // Kecamatan/Desa have extra nesting: polygon[ring][points]
-                  // Use first ring (polygon[0]) and swap [lng,lat] to [lat,lng]
-                  const ring = polygon[0];
-                  if (!ring || !Array.isArray(ring) || ring.length === 0) {
-                    console.warn(`Skipping polygon ${index}: invalid ring data`);
-                    return;
-                  }
-                  console.log(`Polygon ${index}: ${ring.length} points (from ring 0)`);
-                  processedPolygon = ring.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+              // Skip invalid polygon entries
+              if (!Array.isArray(polygon) || polygon.length === 0) {
+                console.warn(`Skipping polygon ${index}: not an array or empty`);
+                return;
+              }
+
+              let processedPolygon;
+
+              if (isKecamatanOrDesa) {
+                // Kecamatan/Desa have extra nesting: polygon[ring][points]
+                // Use first ring (polygon[0]) and swap [lng,lat] to [lat,lng]
+                const ring = polygon[0];
+                if (!ring || !Array.isArray(ring) || ring.length === 0) {
+                  console.warn(`Skipping polygon ${index}: invalid ring data`);
+                  return;
+                }
+
+                console.log(`Polygon ${index}: ${ring.length} points (from ring 0)`);
+
+                // Filter out invalid coordinates
+                const validCoords = ring.filter(([lng, lat]: [number, number]) => {
+                  return lng != null && lat != null &&
+                         typeof lng === 'number' && typeof lat === 'number' &&
+                         !isNaN(lng) && !isNaN(lat);
+                });
+
+                if (validCoords.length === 0) {
+                  console.warn(`Skipping polygon ${index}: no valid coordinates after filtering`);
+                  return;
+                }
+
+                processedPolygon = validCoords.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+
+                if (processedPolygon.length > 0 && processedPolygon[0]) {
                   console.log(`First point after swap: [${processedPolygon[0][0]}, ${processedPolygon[0][1]}]`);
-                } else {
-                  // Provinsi/Kabupaten: polygon is already array of [lat,lng] pairs
-                  console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
-                  processedPolygon = polygon;
+                }
+              } else {
+                // Provinsi/Kabupaten: polygon is already array of [lat,lng] pairs
+                // Validate that polygon contains coordinate pairs
+                const isValidPolygon = polygon.every((coord: any) =>
+                  Array.isArray(coord) && coord.length >= 2 &&
+                  typeof coord[0] === 'number' && typeof coord[1] === 'number' &&
+                  !isNaN(coord[0]) && !isNaN(coord[1])
+                );
+
+                if (!isValidPolygon) {
+                  console.warn(`Skipping polygon ${index}: contains invalid coordinate pairs`);
+                  return;
                 }
 
-                // Validate processed polygon has coordinates
-                if (processedPolygon && processedPolygon.length > 0) {
-                  try {
-                    // Create Leaflet polygon and add directly to boundaryLayer
-                    const leafletPolygon = L.polygon(processedPolygon, {
-                      color: '#3388ff',
-                      fillColor: '#3388ff',
-                      fillOpacity: 0.2,
-                      weight: 2,
-                    });
-                    leafletPolygon.bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`);
-                    leafletPolygon.addTo(boundaryLayer);
-                    createdPolygons.push(leafletPolygon);
-                  } catch (err) {
-                    console.error(`Error creating polygon ${index}:`, err);
-                  }
-                } else {
-                  console.warn(`Skipping polygon ${index}: no valid coordinates`);
+                if (polygon[0]) {
+                  console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
                 }
+                processedPolygon = polygon;
+              }
+
+              console.log(`Polygon ${index} - processedPolygon: length=${processedPolygon?.length}, valid=${!!(processedPolygon && processedPolygon.length > 0)}`);
+
+              // Validate processed polygon has coordinates (need at least 3 points for a polygon)
+              if (processedPolygon && processedPolygon.length >= 3) {
+                try {
+                  // Create Leaflet polygon with enhanced visibility
+                  const leafletPolygon = L.polygon(processedPolygon, {
+                    color: '#2563eb',        // Darker blue border for better visibility
+                    fillColor: '#3b82f6',    // Lighter blue fill
+                    fillOpacity: 0.35,       // 35% opacity for good visibility
+                    weight: 3,               // 3px border
+                  });
+                  leafletPolygon.bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`);
+                  createdPolygons.push(leafletPolygon);
+                } catch (err) {
+                  console.error(`Error creating polygon ${index}:`, err);
+                }
+              } else {
+                console.warn(`Skipping polygon ${index}: no valid coordinates`);
               }
             });
 
-            console.log(`Successfully added ${createdPolygons.length} polygon(s) to boundary layer`);
+            console.log(`Created ${createdPolygons.length} polygon(s) for ${data.nama}`);
+
+            // Create a layer group and add all polygons to it, then add to map
+            if (createdPolygons.length > 0) {
+              const newBoundaryLayer = L.layerGroup(createdPolygons);
+              newBoundaryLayer.addTo(map);
+              boundaryLayerRef.current = newBoundaryLayer;
+              console.log(`Successfully added boundary layer with ${createdPolygons.length} polygon(s) to map`);
+              console.log('Layer is on map:', map.hasLayer(newBoundaryLayer));
+              console.log('Number of layers on map:', Object.keys((map as any)._layers || {}).length);
+            }
 
             // Fit map to polygon bounds - include all polygons, not just the first one
             if (createdPolygons.length > 0 && map) {
@@ -357,7 +463,14 @@ export default function InteractivePage() {
                 }
 
                 console.log(`Fitting map to bounds of ${createdPolygons.length} polygon(s):`, bounds);
+                console.log('Bounds details:', {
+                  north: bounds.getNorth(),
+                  south: bounds.getSouth(),
+                  east: bounds.getEast(),
+                  west: bounds.getWest()
+                });
                 map.fitBounds(bounds, { padding: [50, 50] });
+                console.log('Map view after fitBounds:', map.getCenter(), 'zoom:', map.getZoom());
 
                 // If lat/lng are missing, add marker at polygon center
                 if ((!data.lat || !data.lng) && markersLayer) {
@@ -371,24 +484,43 @@ export default function InteractivePage() {
                 console.error('Error fitting bounds:', err);
               }
             } else if (createdPolygons.length === 0) {
-              console.warn('No valid polygons created from boundary data');
+              console.warn(`❌ No valid polygons created for ${data.nama} (${data.kode})`);
+              console.warn('This usually means boundary data is missing or malformed in the database');
+
+              // Show warning to user
+              setBoundaryWarning(`⚠️ Data batas wilayah untuk ${data.nama} tidak tersedia atau tidak valid. Hanya menampilkan titik pusat.`);
+
+              // Fallback to center point if available
+              if (data.lat && data.lng && map) {
+                console.log('Falling back to center point view');
+                map.setView([data.lat, data.lng], 10);
+              }
             }
           }
         } catch (e) {
-          console.error('Error parsing boundary coordinates:', e);
+          console.error(`Error parsing boundary coordinates for ${data.nama} (${data.kode}):`, e);
+
+          // Show warning to user
+          setBoundaryWarning(`⚠️ Error memproses data batas wilayah untuk ${data.nama}. ${data.lat && data.lng ? 'Menampilkan titik pusat.' : 'Wilayah tidak dapat ditampilkan.'}`);
+
           // Fallback to center point if boundary parsing fails
           if (data.lat && data.lng && map) {
-            map.setView([data.lat, data.lng], 8);
+            console.log('Falling back to center point view');
+            map.setView([data.lat, data.lng], 10);
           } else {
-            console.warn('No boundary coordinates and no lat/lng available for', data.kode);
+            console.warn(`⚠️ No boundary coordinates and no lat/lng available for ${data.nama} (${data.kode})`);
+            console.warn('The region cannot be displayed on the map');
           }
         }
       } else if (data.lat && data.lng && map) {
         // No boundary coordinates, but we have lat/lng - just zoom to center point
         console.log('No boundary data, zooming to center point');
+        setBoundaryWarning(`ℹ️ Data batas wilayah untuk ${data.nama} tidak tersedia. Menampilkan titik pusat.`);
         map.setView([data.lat, data.lng], 10);
       } else {
-        console.warn('No boundary or coordinate data available for', data.kode);
+        console.warn(`⚠️ No boundary or coordinate data available for ${data.nama} (${data.kode})`);
+        console.warn('The region cannot be displayed on the map');
+        setBoundaryWarning(`❌ Data untuk ${data.nama} tidak lengkap dan tidak dapat ditampilkan di peta.`);
       }
     } catch (err) {
       console.error('Error loading boundary:', err);
@@ -396,13 +528,31 @@ export default function InteractivePage() {
   };
 
   const resetMapView = () => {
-    if (mapRef.current && markersLayerRef.current && boundaryLayerRef.current) {
-      mapRef.current.setView([-2.5489, 118.0149], 5);
+    if (mapRef.current && markersLayerRef.current) {
+      // Clear all selections and reset to Indonesia overview
       markersLayerRef.current.clearLayers();
-      boundaryLayerRef.current.clearLayers();
+
+      // Remove all boundary layers completely
+      if (boundaryLayerRef.current) {
+        try {
+          // Remove the entire layer group from the map
+          if (mapRef.current.hasLayer(boundaryLayerRef.current)) {
+            mapRef.current.removeLayer(boundaryLayerRef.current);
+          }
+          // Clear the layer group's contents
+          boundaryLayerRef.current.clearLayers();
+        } catch (e) {
+          // Layer might not be on map
+        }
+        boundaryLayerRef.current = null;
+      }
+
+      // Reset view and show all provinces
+      mapRef.current.setView([-2.5489, 118.0149], 5);
       showProvincesOnMap(provinsiList);
     }
 
+    // Clear all selections
     setSelectedProvinsi('');
     setSelectedKabupaten('');
     setSelectedKecamatan('');
@@ -411,6 +561,7 @@ export default function InteractivePage() {
     setKabupatenList([]);
     setKecamatanList([]);
     setDesaList([]);
+    setBoundaryWarning(null);
   };
 
   if (loading && provinsiList.length === 0) {
@@ -437,6 +588,12 @@ export default function InteractivePage() {
         </div>
 
         {error && <ErrorMessage message={error} />}
+
+        {boundaryWarning && (
+          <div className="mb-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-800 rounded">
+            <p className="text-sm">{boundaryWarning}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Left Panel - Selectors */}
@@ -596,9 +753,13 @@ export default function InteractivePage() {
           <div className="lg:col-span-3">
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-4 bg-blue-600 text-white">
-                <h3 className="text-xl font-semibold">Peta Wilayah Indonesia</h3>
+                <h3 className="text-xl font-semibold">
+                  {detailWilayah ? `Peta: ${detailWilayah.nama}` : 'Peta Wilayah Indonesia'}
+                </h3>
                 <p className="text-sm">
-                  {mapReady ? 'Pilih wilayah untuk melihat boundary' : 'Sedang memuat peta...'}
+                  {!mapReady ? 'Sedang memuat peta...' :
+                   detailWilayah ? `Menampilkan batas wilayah ${detailWilayah.nama}` :
+                   'Menampilkan semua provinsi - Pilih wilayah untuk melihat detail'}
                 </p>
               </div>
               <div className="relative">
