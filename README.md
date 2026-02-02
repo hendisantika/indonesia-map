@@ -10,25 +10,59 @@ A comprehensive Spring Boot application for exploring Indonesia's administrative
 
 ## Features
 
+### Core Features
 - **4-Level Administrative Hierarchy**: Complete data for Provinsi → Kabupaten/Kota → Kecamatan → Desa/Kelurahan
 - **Interactive Map with Boundaries**: Leaflet-based map showing GeoJSON boundary polygons for all levels
-- **Cascading Dropdowns**: Dynamic HTMX-powered selectors that load dependent regions automatically
-- **Boundary Visualization**: Real-time boundary display when selecting provinces, regencies, districts, or villages
-- **W3.CSS Theme Switcher**: 12 color themes for customizable UI experience
+- **Dual Frontend Options**:
+  - **Thymeleaf + HTMX**: Server-side rendering with dynamic updates
+  - **Next.js + React**: Modern SPA with client-side rendering
+- **Cascading Dropdowns**: Dynamic selectors that load dependent regions automatically
+- **Boundary Visualization**: Real-time boundary display for all 87,068+ administrative regions
 - **Coordinate Format Conversion**: Automatic conversion between GeoJSON and Leaflet coordinate formats
 - **RESTful API**: JSON endpoints for boundary data retrieval
 - **Flyway Database Migrations**: Versioned schema management with Git LFS for large datasets
-- **Responsive Design**: Mobile-friendly interface with W3.CSS framework
+- **Responsive Design**: Mobile-friendly interface
+
+### Next.js Frontend Features
+- **Modern React Architecture**: Built with Next.js 14+ and TypeScript
+- **Client-Side Map Rendering**: Optimized Leaflet integration with dynamic imports
+- **Smart Coordinate Handling**: Automatic detection and conversion of coordinate formats by administrative level
+- **Loading States**: Smooth UX with loading indicators and disabled states during map initialization
+- **Error Handling**: Graceful fallbacks for missing boundary data or coordinates
+- **Real-time Boundary Display**: Instant polygon rendering with auto-zoom to selected regions
+- **Tailwind CSS**: Modern, utility-first styling framework
 
 ## Technology Stack
 
-- **Backend**: Spring Boot 4.0.1, Spring Data JPA, Hibernate
-- **Frontend**: Thymeleaf with Layout Dialect, HTMX 2.0.3, W3.CSS Framework
-- **Map Library**: Leaflet 1.9.4 with boundary polygon support
+### Backend
+- **Spring Boot**: 4.0.1
+- **ORM**: Spring Data JPA, Hibernate
 - **Database**: MySQL 9.5.0 with spatial data (GeoJSON)
 - **Migration**: Flyway with Git LFS for large SQL files
 - **Build Tool**: Maven
+- **API**: RESTful endpoints with CORS support
+
+### Frontend Options
+
+#### Thymeleaf + HTMX (Server-Side)
+- **Template Engine**: Thymeleaf with Layout Dialect
+- **Dynamic Updates**: HTMX 2.0.3
+- **Styling**: W3.CSS Framework
+- **Map Library**: Leaflet 1.9.4
+
+#### Next.js + React (Client-Side)
+- **Framework**: Next.js 14+ (App Router)
+- **Language**: TypeScript
+- **UI Library**: React 18+
+- **Styling**: Tailwind CSS
+- **Map Library**: Leaflet 1.9.4 with React integration
+- **HTTP Client**: Axios
+- **Build Tool**: Turbopack (Next.js)
+
+### Infrastructure
 - **Containerization**: Docker Compose
+- **Version Control**: Git with Git LFS for large files
+- **CI/CD**: GitHub Actions
 
 ## Prerequisites
 
@@ -64,8 +98,33 @@ mvn clean spring-boot:run
 The first run will execute Flyway migrations to populate 87,068 administrative regions (this may take several minutes due to large datasets).
 
 4. **Access the application**:
-- **Home Page**: http://localhost:8080
-- **Interactive Map with cascading selectors and boundary visualization**
+- **Thymeleaf Frontend**: http://localhost:8080
+- **Next.js Frontend**: http://localhost:3000/interactive (see Next.js setup below)
+
+## Running the Next.js Frontend
+
+The project includes a modern Next.js frontend with enhanced interactive features.
+
+1. **Navigate to frontend directory**:
+```bash
+cd frontend
+```
+
+2. **Install dependencies**:
+```bash
+npm install
+```
+
+3. **Start development server**:
+```bash
+npm run dev
+```
+
+4. **Access the Next.js app**:
+- **Interactive Map**: http://localhost:3000/interactive
+- Features real-time boundary rendering for all administrative levels
+
+The Next.js frontend automatically connects to the Spring Boot backend API running on port 8080.
 
 ## Database Setup (Manual)
 
@@ -133,26 +192,46 @@ The project includes comprehensive Flyway migration scripts managed with **Git L
 
 ### Web Pages
 
-- `GET /` - Home page with interactive map and cascading selectors
+- `GET /` - Thymeleaf home page with interactive map and cascading selectors
+- `GET /interactive` (Next.js) - React-based interactive map page
 
 ### HTMX Endpoints (Fragment Rendering)
 
-These endpoints return HTML fragments for dynamic content loading:
+These endpoints return HTML fragments for the Thymeleaf frontend:
 
 - `GET /wilayah/kabupaten-select/{provinsiKode}` - Load kabupaten dropdown for selected province
 - `GET /wilayah/kecamatan-select/{kabupatenKode}` - Load kecamatan dropdown for selected kabupaten
 - `GET /wilayah/desa-select/{kecamatanKode}` - Load desa dropdown for selected kecamatan
 
-### REST API Endpoints
-
-These endpoints return JSON data for boundary visualization:
+### REST API v1 (Legacy)
 
 - `GET /wilayah/api/boundary/{kode}` - Get GeoJSON boundary coordinates for a specific region
   - **Example**: `/wilayah/api/boundary/31` (DKI Jakarta province)
-  - **Example**: `/wilayah/api/boundary/31.74` (Jakarta Selatan)
-  - **Example**: `/wilayah/api/boundary/31.74.05` (Tambora kecamatan)
-  - **Example**: `/wilayah/api/boundary/31.74.05.0001` (Kalianyar desa)
-- Returns: `{ "coordinates": [...], "level": "Provinsi|Kabupaten|Kecamatan|Desa" }`
+  - Returns: `{ "coordinates": [...], "level": "Provinsi|Kabupaten|Kecamatan|Desa" }`
+
+### REST API v2 (Used by Next.js Frontend)
+
+All v2 endpoints are prefixed with `/api/v2/wilayah` and return JSON data:
+
+**Region Listing:**
+- `GET /api/v2/wilayah/provinsi` - Get all provinces
+- `GET /api/v2/wilayah/provinsi/{provinsiKode}/kabupaten` - Get kabupaten by province
+- `GET /api/v2/wilayah/kabupaten/{kabupatenKode}/kecamatan` - Get kecamatan by kabupaten
+- `GET /api/v2/wilayah/kecamatan/{kecamatanKode}/desa` - Get desa by kecamatan
+
+**Region Details:**
+- `GET /api/v2/wilayah/{kode}` - Get region details by code
+- `GET /api/v2/wilayah/{kode}/boundary` - Get boundary data with GeoJSON coordinates
+  - **Example**: `/api/v2/wilayah/32` (Jawa Barat province)
+  - **Example**: `/api/v2/wilayah/32.04` (Bandung kabupaten)
+  - **Example**: `/api/v2/wilayah/32.04.28` (Bojongsoang kecamatan)
+  - **Example**: `/api/v2/wilayah/32.04.28.0002` (Bojongsoang desa)
+  - Returns: `{ "kode": "...", "nama": "...", "level": "...", "lat": ..., "lng": ..., "coordinates": "[[[...]]]" }`
+
+**Search:**
+- `GET /api/v2/wilayah/search?keyword={query}` - Search regions by name
+
+**All CORS-enabled** for frontend integration
 
 ## Usage Guide
 
@@ -201,40 +280,81 @@ The application uses HTMX 2.0.3 for seamless, dynamic content updates:
 
 ## Coordinate Format Conversion
 
-The application handles two different coordinate formats from the database:
+The application intelligently handles different coordinate formats stored in the database for different administrative levels:
 
-- **Provinsi/Kabupaten**: Stored as `[[[lat, lng]]]` (Leaflet format)
-- **Kecamatan/Desa**: Stored as `[[[[lng, lat]]]]` (GeoJSON format from MySQL ST_AsGeoJSON)
+### Database Storage Format
 
-JavaScript helper functions automatically:
+- **Provinsi/Kabupaten** (Levels 1-2):
+  - Format: `[[[lat, lng]]]` (Leaflet-compatible)
+  - Structure: 2-level nesting (polygon → points)
+
+- **Kecamatan/Desa** (Levels 3-4):
+  - Format: `[[[[lng, lat]]]]` (GeoJSON format from MySQL ST_AsGeoJSON)
+  - Structure: 3-level nesting (polygon → rings → points)
+
+### Automatic Conversion (Next.js Frontend)
+
+The React/TypeScript implementation automatically:
+1. **Detects administrative level** from API response
+2. **Handles different nesting levels**:
+   - Provinsi/Kabupaten: Direct polygon processing
+   - Kecamatan/Desa: Extract first ring from polygon structure
+3. **Swaps coordinates** for kecamatan/desa from `[lng, lat]` to `[lat, lng]`
+4. **Calculates center points** from polygon bounds when lat/lng are missing in database
+5. **Auto-zooms** map to fit boundary polygons with padding
+
+### Legacy Conversion (Thymeleaf Frontend)
+
+JavaScript helper functions in the Thymeleaf version:
 1. Detect coordinate format by checking array depth
 2. Identify if coordinates need swapping (longitude > 90 for Indonesia)
 3. Convert GeoJSON `[lng, lat]` to Leaflet `[lat, lng]` format
 4. Handle nested arrays for complex polygons
 
-This ensures all boundary levels render correctly on the map.
+This dual-approach ensures all 87,068+ administrative boundaries render correctly across both frontends.
 
 ## Project Structure
 
 ```
 indonesia-map/
-├── src/main/
+├── frontend/                          # Next.js Frontend
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── interactive/
+│   │   │   │   └── page.tsx          # Interactive map page
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── components/
+│   │   │   ├── ErrorMessage.tsx
+│   │   │   └── Loading.tsx
+│   │   ├── lib/
+│   │   │   ├── api.ts                # API client for backend
+│   │   │   └── leaflet-icon-fix.ts   # Leaflet icon path fix
+│   │   └── types/
+│   │       └── wilayah.ts            # TypeScript interfaces
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── tailwind.config.ts
+│
+├── src/main/                          # Spring Boot Backend
 │   ├── java/id/my/hendisantika/indonesiamap/
 │   │   ├── controller/
 │   │   │   ├── HomeController.java
-│   │   │   └── WilayahController.java
+│   │   │   ├── WilayahController.java
+│   │   │   └── WilayahApiV2Controller.java  # REST API
 │   │   ├── entity/
-│   │   │   └── WilayahLevel12.java
+│   │   │   ├── WilayahLevel12.java
+│   │   │   └── BoundaryData.java
 │   │   ├── repository/
 │   │   │   └── WilayahRepository.java
 │   │   ├── service/
 │   │   │   └── WilayahService.java
 │   │   └── IndonesiaMapApplication.java
 │   └── resources/
-│       ├── db/migration/
-│       │   ├── V1_*.sql through V11_*.sql
+│       ├── db/migration/              # Flyway migrations
+│       │   ├── V1_*.sql through V14_*.sql
 │       │   └── README files
-│       ├── templates/
+│       ├── templates/                 # Thymeleaf templates
 │       │   ├── fragments/
 │       │   │   ├── wilayah-list.html
 │       │   │   └── wilayah-detail.html
@@ -242,8 +362,16 @@ indonesia-map/
 │       │   ├── map.html
 │       │   └── layout.html
 │       └── application.properties
+│
+├── img/                               # Screenshots
+│   ├── home.png
+│   ├── provinsi.png
+│   ├── kabupaten.png
+│   ├── kecamatan.png
+│   └── kelurahan.png
 ├── compose.yaml
-└── pom.xml
+├── pom.xml
+└── README.md
 ```
 
 ## Development
@@ -309,7 +437,9 @@ For issues and feature requests, please create an issue in the repository.
 - **Memory**: Recommend at least 2 GB RAM for MySQL container
 - **Git LFS**: Ensure Git LFS is installed before cloning to download large SQL files (832 MB)
 
-## Image Screen shot
+## Screenshots
+
+### Thymeleaf + HTMX Frontend
 
 Home Page
 
@@ -330,6 +460,28 @@ Kecamatan Page
 Kelurahan Page
 
 ![Kelurahan Page](img/kelurahan.png "Kelurahan Page")
+
+### Next.js Interactive Map Frontend
+
+Interactive Map - Loading State
+
+![Interactive Map Loading](img/nextjs-loading.png "Map Loading State")
+
+Interactive Map - Provinsi Boundary
+
+![Provinsi Boundary](img/nextjs-provinsi.png "Provinsi Boundary Display")
+
+Interactive Map - Kabupaten Boundary
+
+![Kabupaten Boundary](img/nextjs-kabupaten.png "Kabupaten Boundary Display")
+
+Interactive Map - Kecamatan Boundary
+
+![Kecamatan Boundary](img/nextjs-kecamatan.png "Kecamatan Boundary Display")
+
+Interactive Map - Desa Boundary
+
+![Desa Boundary](img/nextjs-desa.png "Desa Boundary Display")
 
 ## Technical Highlights
 
