@@ -278,16 +278,34 @@ export default function InteractivePage() {
             coordsArray = data.coordinates;
           }
 
-          // coordsArray is an array of polygons, each polygon is an array of [lat, lng] pairs
+          // coordsArray structure differs by level:
+          // - Provinsi/Kabupaten: array of polygons, each is array of [lat,lng] pairs
+          // - Kecamatan/Desa: array of polygons, each has rings, each ring is array of [lng,lat] pairs
           if (Array.isArray(coordsArray) && coordsArray.length > 0) {
             console.log(`Creating ${coordsArray.length} polygon(s) for ${data.nama}`);
             const polygonGroup = L.layerGroup();
 
-            coordsArray.forEach((polygon: [number, number][], index: number) => {
+            const isKecamatanOrDesa = data.level === 'Kecamatan' || data.level === 'Desa/Kelurahan';
+
+            coordsArray.forEach((polygon: any, index: number) => {
               if (Array.isArray(polygon) && polygon.length > 0) {
-                console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
+                let processedPolygon;
+
+                if (isKecamatanOrDesa) {
+                  // Kecamatan/Desa have extra nesting: polygon[ring][points]
+                  // Use first ring (polygon[0]) and swap [lng,lat] to [lat,lng]
+                  const ring = polygon[0];
+                  console.log(`Polygon ${index}: ${ring.length} points (from ring 0)`);
+                  processedPolygon = ring.map(([lng, lat]: [number, number]) => [lat, lng] as [number, number]);
+                  console.log(`First point after swap: [${processedPolygon[0][0]}, ${processedPolygon[0][1]}]`);
+                } else {
+                  // Provinsi/Kabupaten: polygon is already array of [lat,lng] pairs
+                  console.log(`Polygon ${index}: ${polygon.length} points, first point:`, polygon[0]);
+                  processedPolygon = polygon;
+                }
+
                 // Create Leaflet polygon
-                const leafletPolygon = L.polygon(polygon, {
+                const leafletPolygon = L.polygon(processedPolygon, {
                   color: '#3388ff',
                   fillColor: '#3388ff',
                   fillOpacity: 0.2,
@@ -304,11 +322,20 @@ export default function InteractivePage() {
             // Fit map to polygon bounds
             const layers = polygonGroup.getLayers();
             if (layers.length > 0) {
-              // Get bounds from first polygon layer
+              // Get bounds from all polygon layers
               const firstPolygon = layers[0] as L.Polygon;
               const bounds = firstPolygon.getBounds();
               console.log('Fitting map to bounds:', bounds);
               mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+
+              // If lat/lng are missing, add marker at polygon center
+              if (!data.lat || !data.lng) {
+                const center = bounds.getCenter();
+                console.log('Adding marker at polygon center:', center);
+                L.marker([center.lat, center.lng])
+                  .bindPopup(`<b>${data.nama}</b><br>Kode: ${data.kode}`)
+                  .addTo(markersLayerRef.current);
+              }
             }
           }
         } catch (e) {
@@ -316,8 +343,16 @@ export default function InteractivePage() {
           // Fallback to center point if boundary parsing fails
           if (data.lat && data.lng) {
             mapRef.current.setView([data.lat, data.lng], 8);
+          } else {
+            console.warn('No boundary coordinates and no lat/lng available for', data.kode);
           }
         }
+      } else if (data.lat && data.lng) {
+        // No boundary coordinates, but we have lat/lng - just zoom to center point
+        console.log('No boundary data, zooming to center point');
+        mapRef.current.setView([data.lat, data.lng], 10);
+      } else {
+        console.warn('No boundary or coordinate data available for', data.kode);
       }
     } catch (err) {
       console.error('Error loading boundary:', err);
