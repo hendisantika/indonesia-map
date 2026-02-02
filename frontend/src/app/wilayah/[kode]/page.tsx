@@ -35,17 +35,22 @@ export default function WilayahDetailPage() {
       const detail = await wilayahApi.getByKode(kode);
       setWilayah(detail);
 
-      const kodeLength = kode.length;
+      // Remove dots to get actual digit length
+      const kodeDigits = kode.replace(/\./g, '');
+      const kodeLength = kodeDigits.length;
       let subData: Wilayah[] = [];
       let subType = '';
 
       if (kodeLength === 2) {
+        // Provinsi - load kabupaten/kota
         subData = await wilayahApi.getKabupatenByProvinsi(kode);
         subType = 'Kabupaten/Kota';
       } else if (kodeLength === 4) {
+        // Kabupaten - load kecamatan
         subData = await wilayahApi.getKecamatanByKabupaten(kode);
         subType = 'Kecamatan';
       } else if (kodeLength === 7) {
+        // Kecamatan - load desa/kelurahan
         subData = await wilayahApi.getDesaByKecamatan(kode);
         subType = 'Desa/Kelurahan';
       }
