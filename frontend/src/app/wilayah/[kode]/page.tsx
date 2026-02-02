@@ -42,18 +42,19 @@ export default function WilayahDetailPage() {
       let subType = '';
 
       if (kodeLength === 2) {
-        // Provinsi - load kabupaten/kota
+        // Provinsi (2 digits) - load kabupaten/kota
         subData = await wilayahApi.getKabupatenByProvinsi(kode);
         subType = 'Kabupaten/Kota';
       } else if (kodeLength === 4) {
-        // Kabupaten - load kecamatan
+        // Kabupaten (4 digits) - load kecamatan
         subData = await wilayahApi.getKecamatanByKabupaten(kode);
         subType = 'Kecamatan';
-      } else if (kodeLength === 7) {
-        // Kecamatan - load desa/kelurahan
+      } else if (kodeLength === 6) {
+        // Kecamatan (6 digits) - load desa/kelurahan
         subData = await wilayahApi.getDesaByKecamatan(kode);
         subType = 'Desa/Kelurahan';
       }
+      // Desa (10 digits) has no sub-regions
 
       setSubWilayah(subData);
       setSubRegionType(subType);
