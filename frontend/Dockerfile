@@ -9,12 +9,12 @@ WORKDIR /app
 # Copy package files
 COPY package.json bun.lockb* ./
 
-# Install dependencies
-RUN bun install --frozen-lockfile --production=false
+# Install dependencies (includes devDependencies by default)
+RUN bun install --frozen-lockfile
 
 # ============================================================================
 # Stage 2: Builder
-FROM oven/bun:1.2-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 # Copy dependencies from deps stage
@@ -30,8 +30,8 @@ ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build the application
-RUN bun run build
+# Build the application using Node.js (better Next.js compatibility than Bun)
+RUN npm run build
 
 # ============================================================================
 # Stage 3: Runner (Production)
@@ -55,10 +55,10 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 USER nextjs
 
 # Expose port 3000
-EXPOSE 3000
+EXPOSE 3400
 
 # Set port environment variable
-ENV PORT=3000
+ENV PORT=3400
 ENV HOSTNAME="0.0.0.0"
 
 # Health check

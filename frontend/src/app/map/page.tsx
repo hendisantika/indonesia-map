@@ -6,9 +6,7 @@ import { Wilayah } from '@/types/wilayah';
 import Loading from '@/components/Loading';
 import ErrorMessage from '@/components/ErrorMessage';
 import Link from 'next/link';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
-import { fixLeafletIcon } from '@/lib/leaflet-icon-fix';
+import type L from 'leaflet';
 
 export default function MapPage() {
   const [provinsiList, setProvinsiList] = useState<Wilayah[]>([]);
@@ -25,72 +23,86 @@ export default function MapPage() {
   useEffect(() => {
     if (!mapContainerRef.current || provinsiList.length === 0) return;
 
-    // Fix Leaflet icon issue
-    fixLeafletIcon();
+    let isMounted = true;
 
-    // Initialize map centered on Indonesia
-    if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current).setView([-2.5, 118], 5);
+    const initializeMap = async () => {
+      // Dynamically import Leaflet (client-side only)
+      const LeafletModule = await import('leaflet');
+      const L = LeafletModule.default;
 
-      // Add OpenStreetMap tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapRef.current);
-    }
+      // Fix Leaflet icon issue
+      const { fixLeafletIcon } = await import('@/lib/leaflet-icon-fix');
+      fixLeafletIcon();
 
-    // Add markers and polygons for each province
-    provinsiList.forEach((provinsi) => {
-      if (!mapRef.current) return;
+      if (!isMounted || !mapContainerRef.current) return;
 
-      // Add marker
-      const marker = L.marker([provinsi.lat, provinsi.lng])
-        .addTo(mapRef.current)
-        .bindPopup(`
-          <div class="p-2">
-            <b>${provinsi.nama}</b><br>
-            <small>Kode: ${provinsi.kode}</small><br>
-            ${provinsi.ibukota ? `Ibukota: ${provinsi.ibukota}<br>` : ''}
-            ${provinsi.penduduk ? `Penduduk: ${provinsi.penduduk.toLocaleString()}<br>` : ''}
-            <a href="/wilayah/${provinsi.kode}" class="text-blue-600 hover:underline">Lihat Detail →</a>
-          </div>
-        `);
+      // Initialize map centered on Indonesia
+      if (!mapRef.current) {
+        mapRef.current = L.map(mapContainerRef.current).setView([-2.5, 118], 5);
 
-      marker.on('click', () => {
-        setSelectedProvinsi(provinsi);
-      });
-
-      // Add boundary polygon if available
-      if (provinsi.path) {
-        try {
-          const pathData = JSON.parse(provinsi.path);
-
-          if (Array.isArray(pathData)) {
-            pathData.forEach((polygon) => {
-              if (Array.isArray(polygon) && polygon.length > 0) {
-                const latLngs = polygon.map((coord: number[]) => [coord[1], coord[0]]);
-
-                L.polygon(latLngs, {
-                  color: '#3b82f6',
-                  fillColor: '#3b82f6',
-                  fillOpacity: 0.1,
-                  weight: 1,
-                })
-                  .addTo(mapRef.current!)
-                  .bindTooltip(provinsi.nama, { permanent: false, direction: 'center' })
-                  .on('click', () => {
-                    setSelectedProvinsi(provinsi);
-                  });
-              }
-            });
-          }
-        } catch (error) {
-          console.error(`Error parsing boundary for ${provinsi.nama}:`, error);
-        }
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+        }).addTo(mapRef.current);
       }
-    });
+
+      // Add markers and polygons for each province
+      provinsiList.forEach((provinsi) => {
+        if (!mapRef.current) return;
+
+        // Add marker
+        const marker = L.marker([provinsi.lat, provinsi.lng])
+          .addTo(mapRef.current)
+          .bindPopup(`
+            <div class="p-2">
+              <b>${provinsi.nama}</b><br>
+              <small>Kode: ${provinsi.kode}</small><br>
+              ${provinsi.ibukota ? `Ibukota: ${provinsi.ibukota}<br>` : ''}
+              ${provinsi.penduduk ? `Penduduk: ${provinsi.penduduk.toLocaleString()}<br>` : ''}
+              <a href="/wilayah/${provinsi.kode}" class="text-blue-600 hover:underline">Lihat Detail →</a>
+            </div>
+          `);
+
+        marker.on('click', () => {
+          setSelectedProvinsi(provinsi);
+        });
+
+        // Add boundary polygon if available
+        if (provinsi.path) {
+          try {
+            const pathData = JSON.parse(provinsi.path);
+
+            if (Array.isArray(pathData)) {
+              pathData.forEach((polygon) => {
+                if (Array.isArray(polygon) && polygon.length > 0) {
+                  const latLngs: [number, number][] = polygon.map((coord: number[]) => [coord[1], coord[0]]);
+
+                  L.polygon(latLngs, {
+                    color: '#3b82f6',
+                    fillColor: '#3b82f6',
+                    fillOpacity: 0.1,
+                    weight: 1,
+                  })
+                    .addTo(mapRef.current!)
+                    .bindTooltip(provinsi.nama, { permanent: false, direction: 'center' })
+                    .on('click', () => {
+                      setSelectedProvinsi(provinsi);
+                    });
+                }
+              });
+            }
+          } catch (error) {
+            console.error(`Error parsing boundary for ${provinsi.nama}:`, error);
+          }
+        }
+      });
+    };
+
+    initializeMap();
 
     return () => {
+      isMounted = false;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
