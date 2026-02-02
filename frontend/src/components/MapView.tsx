@@ -36,8 +36,12 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
         if (!mapRef.current && mapContainerRef.current) {
           const zoomLevel = wilayah.kode.length === 2 ? 8 : wilayah.kode.length === 4 ? 10 : 12;
 
+          // Default center (Indonesia center) if lat/lng not available
+          const centerLat = wilayah.lat ?? -2.5;
+          const centerLng = wilayah.lng ?? 118.0;
+
           mapRef.current = L.map(mapContainerRef.current).setView(
-            [wilayah.lat, wilayah.lng],
+            [centerLat, centerLng],
             zoomLevel
           );
 
@@ -47,11 +51,14 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
             maxZoom: 19,
           }).addTo(mapRef.current);
 
-          // Add marker for the location
-          L.marker([wilayah.lat, wilayah.lng])
-            .addTo(mapRef.current)
-            .bindPopup(`<b>${wilayah.nama}</b><br>Kode: ${wilayah.kode}`)
-            .openPopup();
+          // Add marker only if lat/lng are available
+          if (wilayah.lat !== null && wilayah.lat !== undefined &&
+              wilayah.lng !== null && wilayah.lng !== undefined) {
+            L.marker([wilayah.lat, wilayah.lng])
+              .addTo(mapRef.current)
+              .bindPopup(`<b>${wilayah.nama}</b><br>Kode: ${wilayah.kode}`)
+              .openPopup();
+          }
 
           // Parse and display boundary path if available
           if (wilayah.path) {

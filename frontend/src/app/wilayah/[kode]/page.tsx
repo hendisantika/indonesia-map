@@ -111,13 +111,17 @@ export default function WilayahDetailPage() {
               )}
             </div>
             <div>
-              <p className="mb-2">
-                <span className="font-semibold">Latitude:</span> {wilayah.lat.toFixed(6)}
-              </p>
-              <p className="mb-2">
-                <span className="font-semibold">Longitude:</span> {wilayah.lng.toFixed(6)}
-              </p>
-              {wilayah.elv !== undefined && wilayah.elv !== 0 && (
+              {wilayah.lat !== null && wilayah.lat !== undefined && (
+                <p className="mb-2">
+                  <span className="font-semibold">Latitude:</span> {wilayah.lat.toFixed(6)}
+                </p>
+              )}
+              {wilayah.lng !== null && wilayah.lng !== undefined && (
+                <p className="mb-2">
+                  <span className="font-semibold">Longitude:</span> {wilayah.lng.toFixed(6)}
+                </p>
+              )}
+              {wilayah.elv !== undefined && wilayah.elv !== null && wilayah.elv !== 0 && (
                 <p className="mb-2">
                   <span className="font-semibold">Elevasi:</span> {wilayah.elv} m
                 </p>
