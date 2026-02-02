@@ -29,6 +29,7 @@ env:
   DB_NAME: wilayah_indo
   # Application Configuration
   SERVER_PORT: 2000
+  FRONTEND_PORT: 3400
   SPRING_PROFILE: dev
 
 jobs:
@@ -303,7 +304,80 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Run Command:" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
-          echo "docker run -d -p 3000:3000 \\" >> $GITHUB_STEP_SUMMARY
+          echo "docker run -d -p ${{ env.FRONTEND_PORT }}:${{ env.FRONTEND_PORT }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  -e NEXT_PUBLIC_API_URL=http://your-backend:8080 \\" >> $GITHUB_STEP_SUMMARY
+          echo "  -e PORT=${{ env.FRONTEND_PORT }} \\" >> $GITHUB_STEP_SUMMARY
           echo "  ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:latest" >> $GITHUB_STEP_SUMMARY
           echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-frontend:
+    needs: [changes, docker-frontend]
+    if: needs.changes.outputs.frontend == 'true'
+    name: Deploy Frontend to Dev Server
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check SSH server connectivity
+        run: |
+          echo "Testing connectivity to SSH server..."
+          echo "Host: ${{ env.DEPLOY_HOST }}"
+          echo "Port: 22"
+
+          if timeout 10 bash -c "cat < /dev/null > /dev/tcp/${{ env.DEPLOY_HOST }}/22"; then
+            echo "✓ Port is reachable"
+          else
+            echo "✗ Port is NOT reachable - SSH server may be behind firewall"
+            echo "GitHub Actions IP ranges need to be whitelisted on your server"
+            echo "See: https://api.github.com/meta for GitHub IP ranges"
+          fi
+
+      - name: Deploy Frontend to Dev Server
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ env.DEPLOY_HOST }}
+          username: ${{ env.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          timeout: 120s
+          command_timeout: 30m
+          debug: false
+          script: |
+            mkdir -p ${{ env.DEPLOY_PATH }}
+            cd ${{ env.DEPLOY_PATH }}
+
+            docker pull ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}
+
+            docker stop indonesia-map-frontend || true
+            docker rm indonesia-map-frontend || true
+
+            docker run -d \
+              --name indonesia-map-frontend \
+              --restart unless-stopped \
+              -p ${{ env.FRONTEND_PORT }}:${{ env.FRONTEND_PORT }} \
+              -e NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}" \
+              -e PORT="${{ env.FRONTEND_PORT }}" \
+              --network host \
+              ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}
+
+            docker image prune -f
+            docker ps | grep indonesia-map-frontend
+
+            sleep 10
+            curl -f http://localhost:${{ env.FRONTEND_PORT }}/ || echo "Warning: Health check failed"
+
+      - name: Frontend Deployment Summary
+        run: |
+          echo "## Frontend Deployment Complete! 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Server:** \`${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Port:** \`${{ env.FRONTEND_PORT }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Access URLs:" >> $GITHUB_STEP_SUMMARY
+          echo "- Frontend: http://${{ env.DEPLOY_HOST }}:${{ env.FRONTEND_PORT }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Backend API: http://map.persislabs.my.id" >> $GITHUB_STEP_SUMMARY
