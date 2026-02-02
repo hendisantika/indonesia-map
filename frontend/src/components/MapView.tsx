@@ -65,45 +65,59 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
             try {
               const pathData = JSON.parse(wilayah.path);
 
-              if (Array.isArray(pathData)) {
+              if (Array.isArray(pathData) && mapRef.current) {
                 // Determine if we need coordinate transformation based on kode length
                 const kodeLen = wilayah.kode.replace(/\./g, '').length;
                 const isKecamatanOrDesa = kodeLen > 5; // > 5 digits = kecamatan or desa
 
                 // Handle multiple polygons
                 pathData.forEach((polygon) => {
-                  if (Array.isArray(polygon) && polygon.length > 0) {
+                  if (!Array.isArray(polygon) || polygon.length === 0 || !mapRef.current) return;
+
+                  try {
                     let coords;
 
                     if (isKecamatanOrDesa) {
                       // Kecamatan/Desa: Extract first ring and swap [lng,lat] to [lat,lng]
                       const ring = polygon[0];
+                      if (!Array.isArray(ring) || ring.length === 0) return;
                       coords = ring.map((coord: number[]) => [coord[1], coord[0]]);
                     } else {
                       // Provinsi/Kabupaten: Already in [lat,lng] format
                       coords = polygon;
                     }
 
-                    L.polygon(coords, {
-                      color: '#3b82f6',
-                      fillColor: '#3b82f6',
-                      fillOpacity: 0.2,
-                      weight: 2,
-                    }).addTo(mapRef.current!);
+                    if (coords && coords.length > 0 && mapRef.current) {
+                      L.polygon(coords, {
+                        color: '#3b82f6',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 0.2,
+                        weight: 2,
+                      }).addTo(mapRef.current);
+                    }
+                  } catch (err) {
+                    console.error('Error creating polygon:', err);
                   }
                 });
 
                 // Fit map to show all boundaries
-                let allCoords;
-                if (isKecamatanOrDesa) {
-                  allCoords = pathData.map((p: any) => p[0].map((c: number[]) => [c[1], c[0]])).flat();
-                } else {
-                  allCoords = pathData.flat();
-                }
+                try {
+                  let allCoords;
+                  if (isKecamatanOrDesa) {
+                    allCoords = pathData
+                      .filter((p: any) => Array.isArray(p) && Array.isArray(p[0]))
+                      .map((p: any) => p[0].map((c: number[]) => [c[1], c[0]]))
+                      .flat();
+                  } else {
+                    allCoords = pathData.flat();
+                  }
 
-                if (allCoords.length > 0) {
-                  const bounds = L.latLngBounds(allCoords);
-                  mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+                  if (allCoords && allCoords.length > 0 && mapRef.current) {
+                    const bounds = L.latLngBounds(allCoords);
+                    mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+                  }
+                } catch (err) {
+                  console.error('Error fitting bounds:', err);
                 }
               }
             } catch (error) {
