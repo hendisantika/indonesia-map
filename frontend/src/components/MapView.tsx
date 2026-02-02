@@ -60,12 +60,10 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
 
               if (Array.isArray(pathData)) {
                 // Handle multiple polygons
+                // Path data is already in [lat, lng] format for Leaflet
                 pathData.forEach((polygon) => {
                   if (Array.isArray(polygon) && polygon.length > 0) {
-                    // Convert [lng, lat] to [lat, lng] for Leaflet
-                    const latLngs = polygon.map((coord: number[]) => [coord[1], coord[0]]);
-
-                    L.polygon(latLngs, {
+                    L.polygon(polygon, {
                       color: '#3b82f6',
                       fillColor: '#3b82f6',
                       fillOpacity: 0.2,
@@ -75,7 +73,7 @@ export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
                 });
 
                 // Fit map to show all boundaries
-                const allCoords = pathData.flat().map((coord: number[]) => [coord[1], coord[0]]);
+                const allCoords = pathData.flat();
                 if (allCoords.length > 0) {
                   const bounds = L.latLngBounds(allCoords);
                   mapRef.current.fitBounds(bounds, { padding: [50, 50] });
