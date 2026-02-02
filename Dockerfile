@@ -13,7 +13,7 @@ RUN ./mvnw dependency:go-offline -B
 # Copy source code
 COPY src ./src
 
-# Build the application
+# Build the application (migrations are included in the JAR)
 RUN ./mvnw clean package -DskipTests -Dmaven.test.skip=true
 
 # Runtime stage
@@ -21,11 +21,14 @@ FROM eclipse-temurin:25-jre-alpine
 
 WORKDIR /app
 
+# Install curl for healthcheck
+RUN apk add --no-cache curl
+
 # Create non-root user
 RUN addgroup -g 1000 appuser && \
     adduser -D -u 1000 -G appuser appuser
 
-# Copy JAR from builder
+# Copy JAR from builder (migrations are inside the JAR)
 COPY --from=builder /app/target/*.jar app.jar
 
 # Change ownership
@@ -35,20 +38,16 @@ USER appuser
 
 # Environment variables (can be overridden at runtime)
 ENV SPRING_PROFILES_ACTIVE=dev \
-    SERVER_PORT=2000 \
-    DB_URL="" \
-    DB_USERNAME="" \
-    DB_PASSWORD=""
+    SERVER_PORT=2000
 
 # Expose port
-EXPOSE ${SERVER_PORT}
+EXPOSE 2000
 
-# Health check
+# Health check using curl
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:${SERVER_PORT}/actuator/health || exit 1
+    CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
 # Run application with JVM options
 ENTRYPOINT ["java", \
     "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dserver.port=${SERVER_PORT}", \
     "-jar", "app.jar"]
