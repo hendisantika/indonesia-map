@@ -24,12 +24,14 @@ export default function InteractivePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
   const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const boundaryLayerRef = useRef<L.LayerGroup | null>(null);
   const LeafletRef = useRef<typeof L | null>(null);
+  const [containerReady, setContainerReady] = useState(false);
 
   // Initialize client-side only
   useEffect(() => {
@@ -38,46 +40,73 @@ export default function InteractivePage() {
 
   // Initialize map (client-side only)
   useEffect(() => {
-    if (!isClient || !mapContainerRef.current) return;
+    console.log('Map useEffect triggered', { isClient, containerReady, hasContainer: !!mapContainerRef.current });
+
+    if (!isClient || !containerReady || !mapContainerRef.current) {
+      console.log('Skipping map init - waiting for client/container', { isClient, containerReady });
+      return;
+    }
 
     const initMap = async () => {
+      console.log('Starting map initialization...');
       try {
         // Dynamic import of Leaflet (CSS is loaded via CDN in layout.tsx)
         const LeafletModule = await import('leaflet');
+        console.log('Leaflet module imported');
+
         const { fixLeafletIcon } = await import('@/lib/leaflet-icon-fix');
+        console.log('Icon fix imported');
 
         const L = LeafletModule.default;
         LeafletRef.current = L;
         console.log('Leaflet loaded successfully');
 
         fixLeafletIcon();
+        console.log('Icon fix applied');
 
         if (!mapRef.current && mapContainerRef.current) {
+          console.log('Creating map instance...');
           mapRef.current = L.map(mapContainerRef.current).setView([-2.5489, 118.0149], 5);
 
           L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors',
             maxZoom: 18,
           }).addTo(mapRef.current);
+          console.log('Tile layer added');
 
           markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
+          console.log('Markers layer added');
+
           boundaryLayerRef.current = L.layerGroup().addTo(mapRef.current);
+          console.log('Boundary layer added');
+
+          // Mark map as ready
+          setMapReady(true);
+          console.log('Map initialization complete - all refs ready');
+        } else {
+          console.log('Map already exists or container missing', {
+            hasMap: !!mapRef.current,
+            hasContainer: !!mapContainerRef.current
+          });
         }
       } catch (error) {
         console.error('Error initializing map:', error);
-        setError('Failed to initialize map');
+        setError('Failed to initialize map. Please refresh the page.');
+        setMapReady(false);
       }
     };
 
     initMap();
 
     return () => {
+      console.log('Map cleanup running');
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
+      setMapReady(false);
     };
-  }, [isClient]);
+  }, [isClient, containerReady]);
 
   // Load provinsi list on mount
   useEffect(() => {
@@ -210,16 +239,15 @@ export default function InteractivePage() {
   };
 
   const loadBoundary = async (kode: string) => {
+    if (!mapReady) {
+      console.warn('Map not ready yet, skipping boundary load');
+      return;
+    }
+
     console.log('loadBoundary called with kode:', kode);
-    console.log('Refs status:', {
-      map: !!mapRef.current,
-      markers: !!markersLayerRef.current,
-      boundary: !!boundaryLayerRef.current,
-      leaflet: !!LeafletRef.current
-    });
 
     if (!mapRef.current || !markersLayerRef.current || !boundaryLayerRef.current || !LeafletRef.current) {
-      console.error('Early return: One or more refs are null');
+      console.error('Map refs are null despite mapReady being true');
       return;
     }
 
@@ -349,12 +377,13 @@ export default function InteractivePage() {
               {/* Provinsi Select */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Provinsi
+                  Provinsi {!mapReady && <span className="text-xs text-gray-500">(Loading map...)</span>}
                 </label>
                 <select
                   value={selectedProvinsi}
                   onChange={(e) => handleProvinsiChange(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={!mapReady}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 >
                   <option value="">Pilih Provinsi</option>
                   {provinsiList.map((prov) => (
@@ -497,9 +526,30 @@ export default function InteractivePage() {
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
               <div className="p-4 bg-blue-600 text-white">
                 <h3 className="text-xl font-semibold">Peta Wilayah Indonesia</h3>
-                <p className="text-sm">Pilih wilayah untuk melihat boundary</p>
+                <p className="text-sm">
+                  {mapReady ? 'Pilih wilayah untuk melihat boundary' : 'Sedang memuat peta...'}
+                </p>
               </div>
-              <div ref={mapContainerRef} style={{ height: '600px', width: '100%' }} />
+              <div className="relative">
+                <div
+                  ref={(el) => {
+                    mapContainerRef.current = el;
+                    if (el && !containerReady) {
+                      console.log('Map container mounted');
+                      setContainerReady(true);
+                    }
+                  }}
+                  style={{ height: '600px', width: '100%' }}
+                />
+                {!mapReady && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-75">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <p className="text-gray-700 font-medium">Memuat peta...</p>
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="p-4 bg-gray-50 border-t">
                 <button
                   onClick={resetMapView}
