@@ -1,10 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useEffect, useRef, useState } from 'react';
+import type L from 'leaflet';
 import { Wilayah } from '@/types/wilayah';
-import { fixLeafletIcon } from '@/lib/leaflet-icon-fix';
 
 interface MapViewProps {
   wilayah: Wilayah;
@@ -13,84 +11,117 @@ interface MapViewProps {
 
 export default function MapView({ wilayah, height = '500px' }: MapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
 
+  // Set client-side flag
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    setIsClient(true);
+  }, []);
 
-    // Fix Leaflet icon issue
-    fixLeafletIcon();
+  // Initialize map with dynamic import
+  useEffect(() => {
+    if (!isClient || !mapContainerRef.current || mapRef.current) return;
 
-    // Initialize map
-    if (!mapRef.current) {
-      mapRef.current = L.map(mapContainerRef.current).setView(
-        [wilayah.lat, wilayah.lng],
-        wilayah.kode.length === 2 ? 8 : wilayah.kode.length === 4 ? 10 : 12
-      );
-
-      // Add OpenStreetMap tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19,
-      }).addTo(mapRef.current);
-    }
-
-    // Add marker for the location
-    const marker = L.marker([wilayah.lat, wilayah.lng])
-      .addTo(mapRef.current)
-      .bindPopup(`<b>${wilayah.nama}</b><br>Kode: ${wilayah.kode}`)
-      .openPopup();
-
-    // Parse and display boundary path if available
-    if (wilayah.path) {
+    const initMap = async () => {
       try {
-        const pathData = JSON.parse(wilayah.path);
+        // Dynamic import of Leaflet
+        const LeafletModule = await import('leaflet');
+        const { fixLeafletIcon } = await import('@/lib/leaflet-icon-fix');
 
-        if (Array.isArray(pathData)) {
-          // Handle multiple polygons
-          pathData.forEach((polygon) => {
-            if (Array.isArray(polygon) && polygon.length > 0) {
-              // Convert [lng, lat] to [lat, lng] for Leaflet
-              const latLngs = polygon.map((coord: number[]) => [coord[1], coord[0]]);
+        const L = LeafletModule.default;
+        fixLeafletIcon();
 
-              L.polygon(latLngs, {
-                color: '#3b82f6',
-                fillColor: '#3b82f6',
-                fillOpacity: 0.2,
-                weight: 2,
-              }).addTo(mapRef.current!);
+        if (!mapRef.current && mapContainerRef.current) {
+          const zoomLevel = wilayah.kode.length === 2 ? 8 : wilayah.kode.length === 4 ? 10 : 12;
+
+          mapRef.current = L.map(mapContainerRef.current).setView(
+            [wilayah.lat, wilayah.lng],
+            zoomLevel
+          );
+
+          // Add OpenStreetMap tile layer
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(mapRef.current);
+
+          // Add marker for the location
+          L.marker([wilayah.lat, wilayah.lng])
+            .addTo(mapRef.current)
+            .bindPopup(`<b>${wilayah.nama}</b><br>Kode: ${wilayah.kode}`)
+            .openPopup();
+
+          // Parse and display boundary path if available
+          if (wilayah.path) {
+            try {
+              const pathData = JSON.parse(wilayah.path);
+
+              if (Array.isArray(pathData)) {
+                // Handle multiple polygons
+                pathData.forEach((polygon) => {
+                  if (Array.isArray(polygon) && polygon.length > 0) {
+                    // Convert [lng, lat] to [lat, lng] for Leaflet
+                    const latLngs = polygon.map((coord: number[]) => [coord[1], coord[0]]);
+
+                    L.polygon(latLngs, {
+                      color: '#3b82f6',
+                      fillColor: '#3b82f6',
+                      fillOpacity: 0.2,
+                      weight: 2,
+                    }).addTo(mapRef.current!);
+                  }
+                });
+
+                // Fit map to show all boundaries
+                const allCoords = pathData.flat().map((coord: number[]) => [coord[1], coord[0]]);
+                if (allCoords.length > 0) {
+                  const bounds = L.latLngBounds(allCoords);
+                  mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+                }
+              }
+            } catch (error) {
+              console.error('Error parsing boundary path:', error);
             }
-          });
-
-          // Fit map to show all boundaries
-          const allCoords = pathData.flat().map((coord: number[]) => [coord[1], coord[0]]);
-          if (allCoords.length > 0) {
-            const bounds = L.latLngBounds(allCoords);
-            mapRef.current.fitBounds(bounds, { padding: [50, 50] });
           }
+
+          setMapReady(true);
         }
       } catch (error) {
-        console.error('Error parsing boundary path:', error);
+        console.error('Error initializing map:', error);
       }
-    } else {
-      // If no boundary path, center on marker
-      mapRef.current.setView([wilayah.lat, wilayah.lng],
-        wilayah.kode.length === 2 ? 8 : wilayah.kode.length === 4 ? 10 : 12
-      );
-    }
+    };
 
-    // Cleanup function
+    initMap();
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
+      setMapReady(false);
     };
-  }, [wilayah]);
+  }, [isClient, wilayah]);
 
   return (
     <div className="w-full rounded-lg overflow-hidden shadow-md border border-gray-200">
-      <div ref={mapContainerRef} style={{ height, width: '100%' }} />
+      <div
+        ref={(el) => {
+          mapContainerRef.current = el;
+        }}
+        style={{ height, width: '100%' }}
+        className="relative"
+      >
+        {!mapReady && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-700">Memuat peta...</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
