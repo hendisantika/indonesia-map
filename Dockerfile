@@ -43,8 +43,8 @@ ENV SPRING_PROFILES_ACTIVE=dev \
 # Expose port
 EXPOSE 2000
 
-# Health check using curl
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+# Health check using curl (longer start-period for migrations)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
     CMD curl -f http://localhost:${SERVER_PORT}/actuator/health || exit 1
 
 # Run application with JVM options

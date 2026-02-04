@@ -1,7 +1,8 @@
 services:
   mysql:
-    image: 'mysql:9.5.0'
+    image: 'mysql:9.6.0'
     container_name: indonesia-map-mysql
+    command: --innodb_redo_log_capacity=524288000 --max_allowed_packet=67108864 --innodb_buffer_pool_size=256M
     environment:
       MYSQL_ROOT_PASSWORD: '53cret'
       MYSQL_DATABASE: 'wilayah_indo'
@@ -17,6 +18,32 @@ services:
       retries: 10
       interval: 5s
       start_period: 30s
+    networks:
+      - indonesia-map-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: indonesia-map-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:mysql://mysql:3306/wilayah_indo?createDatabaseIfNotExist=true&useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=Asia/Jakarta&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: yu71
+      DB_PASSWORD: 53cret
+      SERVER_PORT: 2000
+    ports:
+      - '2000:2000'
+    networks:
+      - indonesia-map-network
+    restart: unless-stopped
+
+networks:
+  indonesia-map-network:
+    driver: bridge
 
 volumes:
   mysql_data:
