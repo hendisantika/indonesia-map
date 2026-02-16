@@ -49,5 +49,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=180s --retries=3 \
 
 # Run application with JVM options
 ENTRYPOINT ["java", \
+    "-Xms256m", \
+    "-Xmx1g", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-jar", "app.jar"]
