@@ -292,7 +292,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=frontend
           platforms: linux/amd64
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
+            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://map.persislabs.my.id' }}
 
       - name: Frontend Build Summary
         run: |
@@ -365,7 +365,7 @@ jobs:
               --name indonesia-map-frontend \
               --restart unless-stopped \
               -p ${{ env.FRONTEND_PORT }}:${{ env.FRONTEND_PORT }} \
-              -e NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}" \
+              -e NEXT_PUBLIC_API_URL="${{ vars.NEXT_PUBLIC_API_URL || 'https://map.persislabs.my.id' }}" \
               -e PORT="${{ env.FRONTEND_PORT }}" \
               --network host \
               ${{ env.DOCKER_USERNAME }}/${{ env.DOCKER_FRONTEND_IMAGE_NAME }}:${{ github.run_number }}
